@@ -1,0 +1,511 @@
+.auth-shell,
+.app-shell {
+  min-height: 100vh;
+}
+
+.auth-shell {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  background:
+    radial-gradient(circle at top left, rgba(255, 210, 125, 0.45), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(18, 106, 108, 0.3), transparent 32%),
+    linear-gradient(135deg, #f7f3eb 0%, #eff6f4 45%, #ecf0f8 100%);
+}
+
+.hero-panel,
+.auth-panel,
+.panel {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(19, 52, 59, 0.08);
+  box-shadow: 0 18px 60px rgba(22, 42, 53, 0.08);
+}
+
+.hero-panel {
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-panel h1,
+.topbar h1 {
+  margin: 0;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.hero-panel h1 {
+  font-size: clamp(2.8rem, 4vw, 5rem);
+  max-width: 12ch;
+}
+
+.hero-copy,
+.sidebar-copy,
+.panel-header p,
+.empty-state p {
+  color: #4f666f;
+}
+
+.hero-grid,
+.metrics-row,
+.dashboard-grid,
+.card-grid,
+.detail-grid,
+.filter-grid,
+.form-grid,
+.notification-list,
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.hero-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 2rem;
+}
+
+.metric-card {
+  padding: 1.2rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(180deg, #fef7e6 0%, #ffffff 100%);
+  border: 1px solid rgba(190, 151, 88, 0.22);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.metric-card span,
+.eyebrow,
+.card-topline span,
+.notification-pill,
+.status-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
+.metric-card strong {
+  font-size: 1.6rem;
+}
+
+.demo-box {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: #11353d;
+  color: #f6f3ed;
+}
+
+.demo-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.demo-row:first-of-type {
+  border-top: 0;
+}
+
+.auth-panel {
+  margin: 2rem;
+  padding: 2rem;
+  border-radius: 2rem;
+  align-self: center;
+}
+
+.auth-tabs,
+.sidebar-nav,
+.form-actions,
+.card-actions,
+.topbar {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.auth-tabs button,
+.sidebar-nav button,
+button,
+.ghost-button,
+.danger-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.8rem 1.2rem;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, background 160ms ease;
+}
+
+.auth-tabs button,
+.sidebar-nav button,
+.ghost-button {
+  background: #edf2f0;
+  color: #20414a;
+}
+
+.auth-tabs .active,
+.sidebar-nav .active,
+button {
+  background: linear-gradient(135deg, #cf5f3d 0%, #ab3f2a 100%);
+  color: white;
+}
+
+button:hover,
+.ghost-button:hover,
+.danger-button:hover {
+  transform: translateY(-1px);
+}
+
+.form-stack,
+.meeting-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.composer-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+
+.step-button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.75rem;
+  align-items: center;
+  text-align: left;
+  border-radius: 1.25rem;
+  background: #edf2f0;
+  color: #20414a;
+}
+
+.step-button span {
+  grid-row: span 2;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.86);
+  color: #ab3f2a;
+  font-weight: 800;
+}
+
+.step-button small {
+  color: #607781;
+}
+
+.step-button.active {
+  background: linear-gradient(135deg, #153740 0%, #24606a 100%);
+  color: #f5f1e8;
+}
+
+.step-button.active small {
+  color: #d4e3df;
+}
+
+.composer-step-panel {
+  padding: 1rem;
+  border-radius: 1.4rem;
+  background: rgba(247, 250, 247, 0.72);
+  border: 1px solid rgba(20, 56, 63, 0.08);
+}
+
+.form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wide-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: #21444d;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(31, 66, 76, 0.15);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.88);
+  color: #19363e;
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.banner {
+  margin: 0;
+  padding: 1rem 1.2rem;
+  border-radius: 1rem;
+}
+
+.success {
+  background: #e7f6ec;
+  color: #205739;
+}
+
+.error {
+  background: #fdebea;
+  color: #8e322c;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  background:
+    linear-gradient(180deg, rgba(243, 247, 243, 0.92), rgba(243, 247, 243, 0.96)),
+    radial-gradient(circle at top right, rgba(224, 123, 66, 0.17), transparent 22%);
+}
+
+.sidebar {
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(180deg, #153740 0%, #0d2930 100%);
+  color: #f5f1e8;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 2rem;
+}
+
+.sidebar-nav {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.content {
+  padding: 2rem;
+  display: grid;
+  gap: 1.2rem;
+}
+
+.topbar {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-pill {
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  background: #fff1d9;
+  color: #7a5221;
+}
+
+.metrics-row {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.panel {
+  border-radius: 1.75rem;
+  padding: 1.4rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-grid {
+  grid-template-columns: 1.2fr 0.9fr;
+}
+
+.filter-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.post-card,
+.meeting-card,
+.notification-item {
+  border-radius: 1.4rem;
+  border: 1px solid rgba(20, 56, 63, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfbf8 100%);
+  padding: 1.1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.post-card {
+  cursor: pointer;
+}
+
+.post-card.selected {
+  border-color: rgba(207, 95, 61, 0.45);
+  box-shadow: 0 12px 40px rgba(207, 95, 61, 0.12);
+}
+
+.post-card.city-match {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 252, 246, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(55, 135, 92, 0.16), transparent 42%);
+  border-color: rgba(55, 135, 92, 0.28);
+}
+
+.card-topline,
+.meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.meta-list span {
+  font-size: 0.88rem;
+  background: #eff4f1;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.status-badge {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+}
+
+.status-active {
+  background: #e9f7ef;
+  color: #1f6f49;
+}
+
+.status-draft {
+  background: #edf0f5;
+  color: #506070;
+}
+
+.status-pending {
+  background: #fff4df;
+  color: #8a5516;
+}
+
+.status-acknowledged {
+  background: #e7f6ec;
+  color: #205739;
+}
+
+.status-meeting_requested {
+  background: #e8f0ff;
+  color: #2d5baf;
+}
+
+.status-meeting_scheduled,
+.status-accepted,
+.status-scheduled {
+  background: #e8f0ff;
+  color: #2d5baf;
+}
+
+.status-partner_found {
+  background: #eee5ff;
+  color: #6942b0;
+}
+
+.status-expired,
+.status-withdrawn,
+.status-declined,
+.status-cancelled {
+  background: #ffe9e6;
+  color: #b1443c;
+}
+
+.detail-panel {
+  align-content: start;
+}
+
+.detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.slot-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.slot-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 500;
+}
+
+.notification-list {
+  grid-template-columns: 1fr;
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid rgba(20, 56, 63, 0.08);
+}
+
+.danger-button {
+  background: #8a2f2f;
+  color: white;
+}
+
+.empty-state {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .auth-shell,
+  .app-shell,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .metrics-row,
+  .hero-grid,
+  .composer-steps,
+  .wide-grid,
+  .form-grid,
+  .detail-grid,
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
+}

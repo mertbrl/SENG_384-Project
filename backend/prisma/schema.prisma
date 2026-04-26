@@ -1,0 +1,295 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  engineer
+  healthcare
+  admin
+}
+
+enum PostStatus {
+  draft
+  active
+  meeting_scheduled
+  partner_found
+  expired
+}
+
+enum ProjectStage {
+  idea
+  concept_validation
+  prototype_developed
+  pilot_testing
+  pre_deployment
+}
+
+enum CommitmentLevel {
+  low
+  medium
+  high
+}
+
+enum ConfidentialityLevel {
+  public
+  nda_required
+}
+
+enum MeetingStatus {
+  pending
+  accepted
+  declined
+  scheduled
+  cancelled
+}
+
+enum InterestStatus {
+  pending
+  acknowledged
+  meeting_requested
+  withdrawn
+}
+
+enum NotificationType {
+  verification
+  interest_received
+  interest_update
+  meeting_request
+  meeting_update
+  post_expired
+  system
+}
+
+enum ActionType {
+  register
+  login
+  logout
+  failed_login
+  security_event
+  verify_email
+  profile_update
+  account_delete
+  data_export
+  post_create
+  post_edit
+  post_delete
+  post_status_change
+  interest_express
+  interest_update
+  meeting_request
+  meeting_update
+  admin_suspend_user
+  admin_remove_post
+  admin_verify_user
+  admin_update_post_status
+  admin_view_logs
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  institution  String   @default("")
+  countryId    String   @db.Uuid
+  cityId       String   @db.Uuid
+  expertise    String   @default("")
+  bio          String   @default("")
+  verified     Boolean  @default(false)
+  suspended    Boolean  @default(false)
+  emailVerificationToken     String?  @unique
+  emailVerificationExpiresAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  country            Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  city               City           @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  posts              Post[]
+  interestsRequested Interest[]      @relation("InterestRequester")
+  interestsOwned     Interest[]      @relation("InterestOwner")
+  meetingsRequested  Meeting[]      @relation("MeetingRequester")
+  meetingsOwned      Meeting[]      @relation("MeetingOwner")
+  notifications      Notification[]
+  activityLogs       ActivityLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([countryId])
+  @@index([cityId])
+  @@map("users")
+}
+
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  cities    City[]
+  users     User[]
+  posts     Post[]
+
+  @@index([name])
+  @@map("countries")
+}
+
+model City {
+  id        String   @id @default(uuid()) @db.Uuid
+  countryId String   @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  users     User[]
+  posts     Post[]
+
+  @@unique([countryId, name])
+  @@index([name])
+  @@index([countryId])
+  @@map("cities")
+}
+
+model Post {
+  id                   String               @id @default(uuid()) @db.Uuid
+  userId               String               @db.Uuid
+  countryId            String               @db.Uuid
+  cityId               String               @db.Uuid
+  title                String
+  workingDomain        String
+  projectStage         ProjectStage         @default(idea)
+  requiredExpertise    String
+  healthcareNeed       String               @default("")
+  technicalNeed        String               @default("")
+  commitmentLevel      CommitmentLevel      @default(medium)
+  collaborationType    String               @default("")
+  confidentialityLevel ConfidentialityLevel @default(public)
+  shortExplanation     String               @default("")
+  highLevelIdea        String               @default("")
+  description          String               @default("")
+  expiryDate           DateTime?
+  autoClose            Boolean              @default(false)
+  status               PostStatus           @default(draft)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  searchVector         String?
+  owner    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country  Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  city     City    @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  interests Interest[]
+  meetings Meeting[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([workingDomain])
+  @@index([countryId])
+  @@index([cityId])
+  @@index([expiryDate])
+  @@map("posts")
+}
+
+model Meeting {
+  id           String        @id @default(uuid()) @db.Uuid
+  postId       String        @db.Uuid
+  interestId   String?       @db.Uuid
+  requesterId  String        @db.Uuid
+  ownerId      String        @db.Uuid
+  message      String        @default("")
+  ndaAccepted  Boolean       @default(false)
+  status       MeetingStatus @default(pending)
+  selectedSlot DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  interest  Interest?  @relation(fields: [interestId], references: [id], onDelete: SetNull)
+  requester User       @relation("MeetingRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner     User       @relation("MeetingOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  timeSlots TimeSlot[]
+
+  @@index([postId])
+  @@index([interestId])
+  @@index([requesterId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("meetings")
+}
+
+model Interest {
+  id          String         @id @default(uuid()) @db.Uuid
+  postId      String         @db.Uuid
+  requesterId String         @db.Uuid
+  ownerId     String         @db.Uuid
+  message     String         @default("")
+  status      InterestStatus @default(pending)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  post        Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requester   User           @relation("InterestRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  owner       User           @relation("InterestOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  timeSlots   InterestTimeSlot[]
+  meetings    Meeting[]
+
+  @@index([postId])
+  @@index([requesterId])
+  @@index([ownerId])
+  @@index([status])
+  @@map("interests")
+}
+
+model InterestTimeSlot {
+  id         String   @id @default(uuid()) @db.Uuid
+  interestId String   @db.Uuid
+  proposedAt DateTime
+  proposedBy String   @db.Uuid
+  createdAt  DateTime @default(now())
+  interest Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@index([interestId])
+  @@map("interest_time_slots")
+}
+
+model TimeSlot {
+  id         String   @id @default(uuid()) @db.Uuid
+  meetingId  String   @db.Uuid
+  proposedAt DateTime
+  proposedBy String   @db.Uuid
+  createdAt  DateTime @default(now())
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@map("time_slots")
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String?    @db.Uuid
+  role         String     @default("unknown")
+  actionType   ActionType
+  targetEntity String     @default("")
+  resultStatus String     @default("success")
+  details      String     @default("")
+  ipAddress    String?
+  timestamp    DateTime   @default(now())
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([actionType])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
