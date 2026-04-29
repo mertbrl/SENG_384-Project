@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { authRepository } = require("./auth.repository");
 const { signToken } = require("../../shared/services/tokenService");
 const { auditService } = require("../../shared/services/auditService");
+const { sendVerificationEmail } = require("../../shared/services/mailService");
 const { prisma } = require("../../config/database");
 const { resolveLocation, withLocation } = require("../../shared/utils/location");
 const {
@@ -57,15 +58,21 @@ const authService = {
       ipAddress,
     });
 
+    await sendVerificationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      token: verificationToken,
+    });
+
     await prisma.notification.create({
       data: {
         userId: user.id,
         type: "system",
-        message: `Welcome to ClinBridge, ${user.fullName}! Verification token: ${verificationToken}`,
+        message: "Welcome to ClinBridge. Verification email sent to your inbox.",
       },
     });
 
-    return { user: sanitize(user), verificationToken };
+    return { user: sanitize(user) };
   },
 
   async verifyEmail({ token, ipAddress }) {
@@ -100,15 +107,21 @@ const authService = {
   async resendVerification({ email, ipAddress }) {
     const user = await authRepository.findByEmail(email);
     if (!user) throw new NotFoundError("User");
-    if (user.verified) return { user: sanitize(user), verificationToken: null };
+    if (user.verified) return { user: sanitize(user) };
     const verificationToken = createVerificationToken();
     const verificationExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
     const updated = await authRepository.setVerificationToken(user.id, verificationToken, verificationExpiresAt);
+    await sendVerificationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      token: verificationToken,
+    });
+
     await prisma.notification.create({
       data: {
         userId: user.id,
         type: "verification",
-        message: `Your new verification token is ${verificationToken}`,
+        message: "A new verification email has been sent.",
       },
     });
     await auditService.log({
@@ -118,7 +131,7 @@ const authService = {
       details: "Verification token regenerated",
       ipAddress,
     });
-    return { user: sanitize(updated), verificationToken };
+    return { user: sanitize(updated) };
   },
 
   async login({ email, password, ipAddress }) {

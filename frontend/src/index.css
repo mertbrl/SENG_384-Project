@@ -1,9 +1,11 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 :root {
-  font-family: "Segoe UI", "Aptos", sans-serif;
+  font-family: "Inter", "Geist", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #17323a;
-  background: #f3f7f3;
+  color: #0a1628;
+  background: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

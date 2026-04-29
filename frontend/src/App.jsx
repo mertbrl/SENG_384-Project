@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -38,6 +39,19 @@ const emptyProfile = {
   bio: "",
 };
 
+const emptyLoginForm = { email: "", password: "" };
+const emptyRegisterForm = {
+  fullName: "",
+  email: "",
+  password: "",
+  role: "engineer",
+  institution: "",
+  country: "Turkey",
+  city: "Ankara",
+  expertise: "",
+  privacyAccepted: false,
+};
+
 const emptyFilters = {
   search: "",
   domain: "",
@@ -62,7 +76,7 @@ const collaborationTypeOptions = [
   { value: "research_partner", label: "Research partner" },
 ];
 
-const composerSteps = [
+const studioSteps = [
   { title: "Basic info", caption: "Title, domain and location" },
   { title: "Collaboration", caption: "Needs, expertise and stage" },
   { title: "Safety", caption: "Confidentiality and publish settings" },
@@ -73,6 +87,38 @@ function unwrap(payload) {
     return payload.data;
   }
   return payload;
+}
+
+function toSentenceCase(value) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatApiError(payload) {
+  if (!payload) return "We could not complete your request.";
+  const baseMessage = payload.message && payload.message !== "Validation failed."
+    ? payload.message
+    : "Please check the highlighted fields and try again.";
+
+  if (!Array.isArray(payload.details) || !payload.details.length) {
+    return baseMessage;
+  }
+
+  const detailText = payload.details
+    .map((item) => {
+      const field = toSentenceCase(item?.path || "Field");
+      const message = String(item?.msg || "").trim();
+      if (!message) return "";
+      // Avoid repeating field names when backend already includes it.
+      if (message.toLowerCase().includes(String(item?.path || "").toLowerCase())) {
+        return message;
+      }
+      return `${field}: ${message}`;
+    })
+    .filter(Boolean)
+    .join(" ");
+
+  return detailText || baseMessage;
 }
 
 async function api(path, { method = "GET", body, token, headers = {} } = {}) {
@@ -95,8 +141,7 @@ async function api(path, { method = "GET", body, token, headers = {} } = {}) {
     : await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const details = payload.details ? ` ${JSON.stringify(payload.details)}` : "";
-    throw new Error(`${payload.message || "Request failed."}${details}`);
+    throw new Error(formatApiError(payload));
   }
 
   return typeof payload === "string" ? payload : unwrap(payload);
@@ -119,7 +164,38 @@ function labelFor(options, value) {
 }
 
 function clampStep(value) {
-  return Math.max(0, Math.min(composerSteps.length - 1, value));
+  return Math.max(0, Math.min(studioSteps.length - 1, value));
+}
+
+function validateRegisterForm(registerForm) {
+  if (!registerForm.fullName?.trim()) return "Full name is required.";
+  if (!registerForm.email?.trim()) return "Institutional email is required.";
+  if (!registerForm.password?.trim()) return "Password is required.";
+  if (!registerForm.institution?.trim()) return "Institution is required.";
+  if (!registerForm.country?.trim()) return "Country is required.";
+  if (!registerForm.city?.trim()) return "City is required.";
+  if (!registerForm.expertise?.trim()) return "Expertise is required.";
+  if (!registerForm.privacyAccepted) return "Please agree to the Privacy Policy to create an account.";
+  return "";
+}
+
+function calculateMatchScore(post, currentUser) {
+  if (!post || !currentUser) return 0;
+  const cityScore = post.city === currentUser.city ? 30 : 0;
+  const countryScore = post.country === currentUser.country ? 15 : 0;
+  const roleScore = post.owner?.role && post.owner?.role !== currentUser.role ? 40 : 0;
+  const expertise = String(currentUser.expertise || "").toLowerCase();
+  const domain = String(post.workingDomain || "").toLowerCase();
+  const required = String(post.requiredExpertise || "").toLowerCase();
+  const domainScore = expertise.includes(domain) || expertise.includes(required) ? 15 : 0;
+  return Math.min(cityScore + countryScore + roleScore + domainScore, 100);
+}
+
+function chartSeries(values) {
+  const max = Math.max(...values, 1);
+  return values
+    .map((value, index) => `${(index / (values.length - 1)) * 100},${100 - (value / max) * 100}`)
+    .join(" ");
 }
 
 function formatDate(value) {
@@ -197,25 +273,28 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
+function AuthField({ label, value, onChange, type = "text", placeholder = "", icon = "" }) {
+  return (
+    <label className="auth-field">
+      <span>{label}</span>
+      <div className="auth-input-wrap">
+        <span className="auth-input-icon" aria-hidden="true">{icon}</span>
+        <input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+      </div>
+    </label>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem("clinbridge-session");
+    const saved = localStorage.getItem("health-ai-session");
     return saved ? JSON.parse(saved) : null;
   });
   const [view, setView] = useState("login");
   const [activeTab, setActiveTab] = useState("feed");
   const [locations, setLocations] = useState([]);
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [registerForm, setRegisterForm] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    role: "engineer",
-    institution: "",
-    country: "Turkey",
-    city: "Ankara",
-    expertise: "",
-  });
+  const [loginForm, setLoginForm] = useState(emptyLoginForm);
+  const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
   const [verificationToken, setVerificationToken] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [posts, setPosts] = useState([]);
@@ -225,6 +304,8 @@ function App() {
   const [composerStep, setComposerStep] = useState(0);
   const [interests, setInterests] = useState([]);
   const [interestDraft, setInterestDraft] = useState({ message: "" });
+  const [showNdaModal, setShowNdaModal] = useState(false);
+  const [ndaAcceptedForInterest, setNdaAcceptedForInterest] = useState(false);
   const [interestSlotDrafts, setInterestSlotDrafts] = useState({});
   const [interestSelections, setInterestSelections] = useState({});
   const [interestMeetingDrafts, setInterestMeetingDrafts] = useState({});
@@ -245,6 +326,8 @@ function App() {
   const [adminAnomalies, setAdminAnomalies] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [authInlineError, setAuthInlineError] = useState("");
+  const [registerInlineError, setRegisterInlineError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const token = session?.token || "";
@@ -265,6 +348,11 @@ function App() {
     [cityOptions]
   );
 
+  const scoredPosts = useMemo(
+    () => posts.map((post) => ({ ...post, healthAiMatchScore: calculateMatchScore(post, user) })),
+    [posts, user]
+  );
+
   const stats = useMemo(() => {
     const activePosts = posts.filter((post) => post.status === "active").length;
     const ownPosts = user ? posts.filter((post) => post.userId === user.id).length : 0;
@@ -273,6 +361,15 @@ function App() {
     return { activePosts, ownPosts, activeInterests, pendingMeetings };
   }, [posts, interests, meetings, user]);
 
+  const domainDistribution = useMemo(() => {
+    const countMap = {};
+    posts.forEach((post) => {
+      const key = post.workingDomain || "Other";
+      countMap[key] = (countMap[key] || 0) + 1;
+    });
+    return Object.entries(countMap).slice(0, 5);
+  }, [posts]);
+
   useEffect(() => {
     api("/locations")
       .then(setLocations)
@@ -280,12 +377,51 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verified = params.get("verified");
+    const verifyError = params.get("error");
+    if (verified === "1") {
+      setView("login");
+      setMessage("Email verified successfully. You can now sign in.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (verified === "0" && verifyError) {
+      setView("login");
+      setAuthInlineError(verifyError);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     if (session) {
-      localStorage.setItem("clinbridge-session", JSON.stringify(session));
+      localStorage.setItem("health-ai-session", JSON.stringify(session));
     } else {
-      localStorage.removeItem("clinbridge-session");
+      localStorage.removeItem("health-ai-session");
     }
   }, [session]);
+
+  useEffect(() => {
+    if (message) {
+      toast.success(message, { duration: 3000 });
+      setMessage("");
+    }
+  }, [message]);
+
+  useEffect(() => {
+    if (error) {
+      if (!user && view === "login") {
+        setAuthInlineError(error);
+        setError("");
+        return;
+      }
+      if (!user && view === "register") {
+        setRegisterInlineError(error);
+        setError("");
+        return;
+      }
+      toast.error(error, { duration: 3000 });
+      setError("");
+    }
+  }, [error, user, view]);
 
   useEffect(() => {
     if (token) {
@@ -361,13 +497,14 @@ function App() {
   async function handleLogin(event) {
     event.preventDefault();
     setLoading(true);
+    setAuthInlineError("");
     setError("");
     setMessage("");
     try {
       const result = await api("/auth/login", { method: "POST", body: loginForm });
       setSession(result);
       setActiveTab(result.user.role === "admin" ? "admin" : "feed");
-      setMessage("Login successful.");
+      setMessage("Welcome back to Health AI.");
     } catch (caughtError) {
       setError(caughtError.message);
     } finally {
@@ -377,14 +514,21 @@ function App() {
 
   async function handleRegister(event) {
     event.preventDefault();
+    setRegisterInlineError("");
+    const registerValidationMessage = validateRegisterForm(registerForm);
+    if (registerValidationMessage) {
+      setRegisterInlineError(registerValidationMessage);
+      return;
+    }
     setLoading(true);
     setError("");
     setMessage("");
     try {
-      const result = await api("/auth/register", { method: "POST", body: registerForm });
-      setVerificationToken(result.verificationToken || "");
+      const { privacyAccepted, ...registerPayload } = registerForm;
+      const result = await api("/auth/register", { method: "POST", body: registerPayload });
+      setVerificationToken("");
       setView("verify");
-      setMessage("Account created. Use the generated verification token to activate it.");
+      setMessage(result.message || "Account created. Please check your email for the verification token.");
     } catch (caughtError) {
       setError(caughtError.message);
     } finally {
@@ -421,8 +565,8 @@ function App() {
         method: "POST",
         body: { email: registerForm.email },
       });
-      setVerificationToken(result.verificationToken || "");
-      setMessage(result.message);
+      setVerificationToken("");
+      setMessage(result.message || "A new verification email was sent.");
     } catch (caughtError) {
       setError(caughtError.message);
     } finally {
@@ -441,6 +585,11 @@ function App() {
     setActiveTab("feed");
     setSelectedPost(null);
     setEditingPostId(null);
+    setLoginForm(emptyLoginForm);
+    setRegisterForm(emptyRegisterForm);
+    setVerificationToken("");
+    setAuthInlineError("");
+    setRegisterInlineError("");
   }
 
   function resetComposer() {
@@ -528,6 +677,10 @@ function App() {
 
   async function expressInterest() {
     if (!selectedPost) return;
+    if (!ndaAcceptedForInterest) {
+      setError("Please accept the NDA terms to continue.");
+      return;
+    }
     setError("");
     setMessage("");
     try {
@@ -536,6 +689,8 @@ function App() {
         body: { message: interestDraft.message },
       });
       setInterestDraft({ message: "" });
+      setNdaAcceptedForInterest(false);
+      setShowNdaModal(false);
       setActiveTab("interests");
       setMessage("Interest expressed. The post owner can now propose time slots.");
       await refreshAll();
@@ -659,7 +814,7 @@ function App() {
     setMessage("");
     try {
       const data = await authorized("/users/export");
-      downloadFile("clinbridge-data-export.json", JSON.stringify(data, null, 2), "application/json");
+      downloadFile("health-ai-data-export.json", JSON.stringify(data, null, 2), "application/json");
       setMessage("Data export prepared.");
     } catch (caughtError) {
       setError(caughtError.message);
@@ -741,7 +896,7 @@ function App() {
     setError("");
     try {
       const csv = await authorized("/admin/logs/export");
-      downloadFile("clinbridge-audit-logs.csv", csv, "text/csv");
+      downloadFile("health-ai-audit-logs.csv", csv, "text/csv");
     } catch (caughtError) {
       setError(caughtError.message);
     }
@@ -749,76 +904,117 @@ function App() {
 
   if (!user) {
     return (
-      <main className="auth-shell">
-        <section className="hero-panel">
-          <p className="eyebrow">ClinBridge</p>
-          <h1>Structured co-creation for health projects.</h1>
-          <p className="hero-copy">
-            Engineers and healthcare professionals can publish ideas, find safe first-contact matches, accept NDA terms and move toward a scheduled meeting.
-          </p>
-          <div className="hero-grid">
-            <StatCard label="Scope" value="Partnering" hint="No patient data, no medical advice" />
-            <StatCard label="Flow" value="Post to meeting" hint="Draft, publish, request, confirm" />
-            <StatCard label="Trust" value="Audit ready" hint="RBAC, logs, exports, notifications" />
+      <main className="auth-shell auth-redesign">
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            duration: 3200,
+            style: {
+              maxWidth: "560px",
+              background: "rgba(9, 52, 89, 0.94)",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.26)",
+              borderRadius: "12px",
+            },
+          }}
+        />
+        <section className="auth-visual">
+          <div className="brand-mark">
+            <small>Pi-thon Dynamics</small>
           </div>
-          <div className="demo-box">
-            <h2>Demo accounts</h2>
-            {demoAccounts.map((account) => (
-              <div className="demo-row" key={account.email}>
-                <span>{account.role}</span>
-                <strong>{account.email}</strong>
-                <code>{account.password}</code>
-              </div>
-            ))}
+          <div className="visual-overlay-text">
+            <h1>Secure healthcare collaboration platform</h1>
+            <p>Built for secure collaboration between clinical and engineering teams.</p>
           </div>
         </section>
 
-        <section className="auth-panel">
-          <div className="auth-tabs">
-            {["login", "register", "verify"].map((item) => (
-              <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                {item}
-              </button>
-            ))}
-          </div>
-          {message && <p className="banner success">{message}</p>}
-          {error && <p className="banner error">{error}</p>}
-
+        <section className="auth-panel clean-auth-panel">
           {view === "login" && (
-            <form className="form-stack" onSubmit={handleLogin}>
-              <h2>Login</h2>
-              <Field label="Institutional email" value={loginForm.email} onChange={(email) => setLoginForm({ ...loginForm, email })} />
-              <Field label="Password" type="password" value={loginForm.password} onChange={(password) => setLoginForm({ ...loginForm, password })} />
-              <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Login"}</button>
+            <form className="form-stack auth-form" onSubmit={handleLogin}>
+              <h2>Welcome to Health AI</h2>
+              <p className="auth-subtitle">Sign in to continue</p>
+              <AuthField
+                label="Email"
+                icon="✉"
+                value={loginForm.email}
+                placeholder="you@institution.edu"
+                onChange={(email) => {
+                  setAuthInlineError("");
+                  setLoginForm({ ...loginForm, email });
+                }}
+              />
+              <AuthField
+                label="Password"
+                type="password"
+                icon="🔒"
+                value={loginForm.password}
+                placeholder="Enter your password"
+                onChange={(password) => {
+                  setAuthInlineError("");
+                  setLoginForm({ ...loginForm, password });
+                }}
+              />
+              {authInlineError && <p className="auth-inline-error" role="alert">{authInlineError}</p>}
+              <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign In"}</button>
+              <p className="switch-link">
+                New here? <button type="button" className="text-link" onClick={() => setView("register")}>Create an account</button>
+              </p>
+              <div className="demo-credentials">
+                <strong>Demo Accounts</strong>
+                {demoAccounts.map((account) => (
+                  <p key={account.email}>
+                    {account.role}: <span>{account.email}</span> / <code>{account.password}</code>
+                  </p>
+                ))}
+              </div>
             </form>
           )}
 
           {view === "register" && (
-            <form className="form-stack" onSubmit={handleRegister}>
-              <h2>Create account</h2>
+            <form className="form-stack auth-form" onSubmit={handleRegister}>
+              <h2>Create your account</h2>
+              <p className="auth-subtitle">Join Health AI in a minute</p>
               <div className="form-grid">
-                <Field label="Full name" value={registerForm.fullName} onChange={(fullName) => setRegisterForm({ ...registerForm, fullName })} />
-                <SelectField label="Role" value={registerForm.role} onChange={(role) => setRegisterForm({ ...registerForm, role })} options={[{ value: "engineer", label: "Engineer" }, { value: "healthcare", label: "Healthcare professional" }]} />
-                <Field label="Institutional email" value={registerForm.email} onChange={(email) => setRegisterForm({ ...registerForm, email })} />
-                <Field label="Password" type="password" value={registerForm.password} onChange={(password) => setRegisterForm({ ...registerForm, password })} />
-                <Field label="Institution" value={registerForm.institution} onChange={(institution) => setRegisterForm({ ...registerForm, institution })} />
-                <SelectField label="Country" value={registerForm.country} onChange={(country) => setRegisterForm({ ...registerForm, country })} options={countryOptions.length ? countryOptions : [{ value: "Turkey", label: "Turkey" }]} />
-                <SelectField label="City" value={registerForm.city} onChange={(city) => setRegisterForm({ ...registerForm, city })} options={citySelectOptions.length ? citySelectOptions : [{ value: "Ankara", label: "Ankara" }]} />
-                <Field label="Expertise" value={registerForm.expertise} onChange={(expertise) => setRegisterForm({ ...registerForm, expertise })} />
+                <AuthField label="Full name" icon="👤" value={registerForm.fullName} onChange={(fullName) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, fullName }); }} />
+                <SelectField label="Role" value={registerForm.role} onChange={(role) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, role }); }} options={[{ value: "engineer", label: "Engineer" }, { value: "healthcare", label: "Healthcare professional" }]} />
+                <AuthField label="Institutional email" icon="✉" value={registerForm.email} onChange={(email) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, email }); }} />
+                <AuthField label="Password" type="password" icon="🔒" value={registerForm.password} onChange={(password) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, password }); }} />
+                <Field label="Institution" value={registerForm.institution} onChange={(institution) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, institution }); }} />
+                <SelectField label="Country" value={registerForm.country} onChange={(country) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, country }); }} options={countryOptions.length ? countryOptions : [{ value: "Turkey", label: "Turkey" }]} />
+                <SelectField label="City" value={registerForm.city} onChange={(city) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, city }); }} options={citySelectOptions.length ? citySelectOptions : [{ value: "Ankara", label: "Ankara" }]} />
+                <Field label="Expertise" value={registerForm.expertise} onChange={(expertise) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, expertise }); }} />
               </div>
-              <button type="submit" disabled={loading}>{loading ? "Creating..." : "Register"}</button>
+              <label className="privacy-check">
+                <input
+                  type="checkbox"
+                  checked={registerForm.privacyAccepted}
+                  onChange={(event) => {
+                    setRegisterInlineError("");
+                    setRegisterForm({ ...registerForm, privacyAccepted: event.target.checked });
+                  }}
+                />
+                I agree to the Privacy Policy
+              </label>
+              {registerInlineError && <p className="auth-inline-error" role="alert">{registerInlineError}</p>}
+              <button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Account"}</button>
+              <p className="switch-link">
+                Already a Member? <button type="button" className="text-link" onClick={() => setView("login")}>Log In</button>
+              </p>
             </form>
           )}
 
           {view === "verify" && (
-            <form className="form-stack" onSubmit={handleVerifyEmail}>
+            <form className="form-stack auth-form" onSubmit={handleVerifyEmail}>
               <h2>Email verification</h2>
-              <p>Use the generated token from registration or request a fresh token for the same email.</p>
+              <p>Check your inbox for the verification token and paste it below. You can resend if needed.</p>
               <Field label="Verification token" value={verificationToken} onChange={setVerificationToken} />
               <div className="form-actions">
                 <button type="submit" disabled={loading}>Verify email</button>
                 <button type="button" className="ghost-button" onClick={resendVerification} disabled={loading || !registerForm.email}>Resend token</button>
               </div>
+              <p className="switch-link">
+                Back to <button type="button" className="text-link" onClick={() => setView("login")}>Sign In</button>
+              </p>
             </form>
           )}
         </section>
@@ -830,7 +1026,7 @@ function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <div>
-          <p className="eyebrow">ClinBridge</p>
+          <p className="eyebrow">Health AI</p>
           <h2>{user.fullName}</h2>
           <p className="sidebar-copy">{user.role} at {user.institution || "institution not set"}</p>
         </div>
@@ -838,7 +1034,7 @@ function App() {
           {[
             ["feed", "Posts"],
             ["interests", "Interests"],
-            ["composer", "Create"],
+            ["composer", "Announcement Studio"],
             ["meetings", "Meetings"],
             ["notifications", `Notifications ${unreadCount ? `(${unreadCount})` : ""}`],
             ["profile", "Profile"],
@@ -851,20 +1047,32 @@ function App() {
             <button className={activeTab === "admin" ? "active" : ""} onClick={() => setActiveTab("admin")}>Admin</button>
           )}
         </nav>
-        <button className="ghost-button" onClick={logout}>Logout</button>
+        <div className="sidebar-footer">
+          <button className="ghost-button" onClick={logout}>Logout</button>
+          <small>by Pi-thon Dynamics</small>
+        </div>
       </aside>
 
       <section className="content">
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            duration: 3200,
+            style: {
+              maxWidth: "560px",
+              background: "rgba(9, 52, 89, 0.94)",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.26)",
+              borderRadius: "12px",
+            },
+          }}
+        />
         <header className="topbar">
           <div>
-            <p className="eyebrow">Workspace</p>
-            <h1>{activeTab === "feed" ? "Post discovery" : activeTab}</h1>
+            <h1>{activeTab === "feed" ? "Dashboard" : activeTab === "composer" ? "Create New Announcement" : activeTab === "admin" ? "Admin Command Center" : activeTab[0].toUpperCase() + activeTab.slice(1)}</h1>
           </div>
           <span className="notification-pill">{user.city}, {user.country}</span>
         </header>
-
-        {message && <p className="banner success">{message}</p>}
-        {error && <p className="banner error">{error}</p>}
 
         {activeTab === "feed" && (
           <section className="stack">
@@ -902,7 +1110,7 @@ function App() {
                   <button onClick={() => { resetComposer(); setActiveTab("composer"); }}>New post</button>
                 </div>
                 <div className="card-grid">
-                  {posts.map((post) => (
+                  {scoredPosts.map((post) => (
                     <article className={`post-card ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""}`} key={post.id} onClick={() => setSelectedPost(post)}>
                       <div className="card-topline">
                         <span>{post.workingDomain}</span>
@@ -914,6 +1122,7 @@ function App() {
                         <span>{post.requiredExpertise}</span>
                         <span>{post.city}, {post.country}</span>
                         <span>{labelFor(projectStageOptions, post.projectStage)}</span>
+                        <span className="score-badge">Match Score {post.healthAiMatchScore}</span>
                         {post.cityMatch && <span>Local match</span>}
                       </div>
                       <small>{post.matchExplanation}</small>
@@ -949,9 +1158,9 @@ function App() {
                     {selectedPost.userId !== user.id && selectedPost.status === "active" && (
                       <div className="meeting-form">
                         <h3>Express interest</h3>
-                        <p>Send a short first-contact note. The post owner will propose meeting slots before a meeting request is created.</p>
+                        <p>Send a short first-contact note and confirm NDA acceptance before proceeding.</p>
                         <TextAreaField label="Short message" value={interestDraft.message} onChange={(messageValue) => setInterestDraft({ message: messageValue })} />
-                        <button onClick={expressInterest}>Send interest</button>
+                        <button onClick={() => setShowNdaModal(true)}>Send interest</button>
                       </div>
                     )}
                   </>
@@ -973,7 +1182,7 @@ function App() {
               {editingPostId && <button className="ghost-button" onClick={resetComposer}>Cancel edit</button>}
             </div>
             <div className="composer-steps">
-              {composerSteps.map((step, index) => (
+              {studioSteps.map((step, index) => (
                 <button key={step.title} className={`step-button ${composerStep === index ? "active" : ""}`} onClick={() => setComposerStep(index)}>
                   <span>{index + 1}</span>
                   <strong>{step.title}</strong>
@@ -1016,7 +1225,7 @@ function App() {
             </div>
             <div className="form-actions">
               <button className="ghost-button" onClick={() => setComposerStep((step) => clampStep(step - 1))} disabled={composerStep === 0}>Back</button>
-              <button className="ghost-button" onClick={() => setComposerStep((step) => clampStep(step + 1))} disabled={composerStep === composerSteps.length - 1}>Next</button>
+              <button className="ghost-button" onClick={() => setComposerStep((step) => clampStep(step + 1))} disabled={composerStep === studioSteps.length - 1}>Next</button>
               <button className="ghost-button" onClick={() => savePost("draft")} disabled={loading}>Save draft</button>
               <button onClick={() => savePost("active")} disabled={loading}>Publish</button>
             </div>
@@ -1190,7 +1399,7 @@ function App() {
               </div>
               <div className="form-actions">
                 <button type="submit">Save profile</button>
-                <button type="button" className="ghost-button" onClick={exportMyData}>Export data</button>
+                <button type="button" className="ghost-button" onClick={exportMyData}>⬇ Download My Data (JSON)</button>
                 <button type="button" className="danger-button" onClick={deleteAccount}>Delete account</button>
               </div>
             </form>
@@ -1209,12 +1418,48 @@ function App() {
         {activeTab === "admin" && user.role === "admin" && (
           <section className="stack">
             <div className="metrics-row">
-              <StatCard label="Users" value={adminOverview?.totalUsers || 0} hint="All accounts" />
-              <StatCard label="Active posts" value={adminOverview?.activePosts || 0} hint="Published" />
-              <StatCard label="Pending meetings" value={adminOverview?.pendingMeetings || 0} hint="Awaiting owner" />
-              <StatCard label="Failed logins" value={adminOverview?.failedLogins24h || 0} hint="Last 24 hours" />
-              <StatCard label="Logs" value={adminOverview?.logsCount || 0} hint="Audit rows" />
+              <StatCard label="Total Projects" value={adminOverview?.activePosts || 0} hint="📁 Live and managed posts" />
+              <StatCard label="Verified Experts" value={adminUsers.filter((item) => item.verified).length} hint="✅ Trusted specialist accounts" />
+              <StatCard label="Active Meetings" value={meetings.filter((item) => item.status === "scheduled" || item.status === "accepted").length} hint="📅 In-progress collaboration flow" />
+              <StatCard label="Security Logs" value={adminOverview?.logsCount || 0} hint="🛡️ Auditable security events" />
             </div>
+            <section className="dashboard-grid">
+              <article className="panel">
+                <h2>Activity Trends</h2>
+                <div className="chart-box">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="line-chart">
+                    <polyline
+                      fill="none"
+                      stroke="#3e7cb1"
+                      strokeWidth="2.4"
+                      points={chartSeries([
+                        adminOverview?.failedLogins24h || 0,
+                        adminOverview?.pendingMeetings || 0,
+                        adminOverview?.activePosts || 0,
+                        adminUsers.length,
+                        adminOverview?.logsCount || 0,
+                      ])}
+                    />
+                  </svg>
+                </div>
+              </article>
+              <article className="panel">
+                <h2>Domain Distribution</h2>
+                <div className="donut-wrap">
+                  <div
+                    className="donut-chart"
+                    style={{
+                      background: `conic-gradient(#3e7cb1 0deg ${Math.max((domainDistribution[0]?.[1] || 1) * 36, 36)}deg, #81a4cd ${Math.max((domainDistribution[0]?.[1] || 1) * 36, 36)}deg 360deg)`,
+                    }}
+                  />
+                  <div className="donut-legend">
+                    {(domainDistribution.length ? domainDistribution : [["General", 1]]).map(([domain, count]) => (
+                      <p key={domain}>{domain}: {count}</p>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            </section>
             <section className="panel">
               <div className="panel-header">
                 <div>
@@ -1222,7 +1467,7 @@ function App() {
                   <p>Moderate verification and suspension.</p>
                 </div>
               </div>
-              <div className="table-wrap">
+              <div className="table-wrap users-table-wrap">
                 <table>
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>State</th><th>Actions</th></tr></thead>
                   <tbody>
@@ -1252,14 +1497,15 @@ function App() {
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Title</th><th>Status</th><th>Owner</th><th>City</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Title</th><th>Status</th><th>Owner</th><th>City</th><th>Match Score</th><th>Actions</th></tr></thead>
                   <tbody>
                     {adminPosts.map((post) => (
                       <tr key={post.id}>
                         <td>{post.title}</td>
-                        <td>{post.status}</td>
+                        <td><StatusBadge status={post.status} /></td>
                         <td>{post.owner?.fullName}</td>
                         <td>{post.city}</td>
+                        <td><span className="score-badge">{calculateMatchScore(post, user)}</span></td>
                         <td>
                           <button className="ghost-button" onClick={() => adminPostStatus(post.id, "active")}>Activate</button>
                           <button className="ghost-button" onClick={() => adminPostStatus(post.id, "expired")}>Expire</button>
@@ -1279,16 +1525,16 @@ function App() {
                 </div>
                 <button onClick={exportLogs}>Export CSV</button>
               </div>
-              <div className="table-wrap">
+              <div className="table-wrap admin-log-wrap">
                 <table>
                   <thead><tr><th>Time</th><th>Role</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
                   <tbody>
-                    {adminLogs.map((log) => (
+                    {adminLogs.slice(0, 120).map((log) => (
                       <tr key={log.id}>
                         <td>{formatDate(log.timestamp)}</td>
                         <td>{log.role}</td>
                         <td>{log.actionType}</td>
-                        <td>{log.targetEntity}</td>
+                        <td className="target-cell" title={log.targetEntity || "N/A"}>{log.targetEntity || "N/A"}</td>
                         <td>{log.resultStatus}</td>
                       </tr>
                     ))}
@@ -1336,6 +1582,23 @@ function App() {
               </section>
             )}
           </section>
+        )}
+
+        {showNdaModal && (
+          <div className="modal-backdrop" role="presentation">
+            <div className="nda-modal">
+              <h2>NDA Confirmation</h2>
+              <p>You must accept confidentiality terms before sending interest for this project.</p>
+              <label className="checkbox">
+                <input type="checkbox" checked={ndaAcceptedForInterest} onChange={(event) => setNdaAcceptedForInterest(event.target.checked)} />
+                I confirm that I will keep all shared details confidential under NDA.
+              </label>
+              <div className="form-actions">
+                <button className="ghost-button" onClick={() => { setShowNdaModal(false); setNdaAcceptedForInterest(false); }}>Cancel</button>
+                <button onClick={expressInterest} disabled={!ndaAcceptedForInterest}>Proceed</button>
+              </div>
+            </div>
+          </div>
         )}
       </section>
     </main>

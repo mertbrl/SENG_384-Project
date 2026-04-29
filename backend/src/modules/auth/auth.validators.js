@@ -18,6 +18,10 @@ const registerValidators = [
   body("role")
     .isIn(["engineer", "healthcare"])
     .withMessage("Role must be engineer or healthcare."),
+  body("institution").trim().notEmpty().withMessage("Institution is required."),
+  body("country").trim().notEmpty().withMessage("Country is required."),
+  body("city").trim().notEmpty().withMessage("City is required."),
+  body("expertise").trim().notEmpty().withMessage("Expertise is required."),
 ];
 
 const loginValidators = [

@@ -17,7 +17,7 @@ const authController = {
       validate(req);
       const result = await authService.register({ ...req.body, ipAddress: requestIp(req) });
       created(res, {
-        message: "Registration successful. Please verify your email before logging in.",
+        message: "Registration successful. A verification email has been sent to your address.",
         ...result,
       });
     } catch (err) {
@@ -36,13 +36,33 @@ const authController = {
     }
   },
 
+  async verifyEmailFromLink(req, res, next) {
+    const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
+    try {
+      const token = String(req.query.token || "").trim();
+      if (!token) throw new ValidationError("Verification token is required.");
+      await authService.verifyEmail({ token, ipAddress: requestIp(req) });
+      const successUrl = new URL(frontendUrl);
+      successUrl.searchParams.set("verified", "1");
+      return res.redirect(302, successUrl.toString());
+    } catch (err) {
+      if (err.isOperational) {
+        const failedUrl = new URL(frontendUrl);
+        failedUrl.searchParams.set("verified", "0");
+        failedUrl.searchParams.set("error", err.message);
+        return res.redirect(302, failedUrl.toString());
+      }
+      next(err);
+    }
+  },
+
   async resendVerification(req, res, next) {
     try {
       const { email } = req.body;
       if (!email) throw new ValidationError("Email is required.");
       const result = await authService.resendVerification({ email, ipAddress: requestIp(req) });
       success(res, {
-        message: result.verificationToken ? "Verification token generated." : "Email is already verified.",
+        message: result.user?.verified ? "Email is already verified." : "Verification email sent.",
         ...result,
       });
     } catch (err) {
