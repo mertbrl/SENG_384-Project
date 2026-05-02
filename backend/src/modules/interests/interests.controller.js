@@ -56,6 +56,15 @@ const interestsController = {
     }
   },
 
+  async reinstateWithdrawn(req, res, next) {
+    try {
+      const interest = await interestsService.reinstateWithdrawn(req.user, req.params.id);
+      success(res, interest);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async requestMeeting(req, res, next) {
     try {
       const meeting = await interestsService.requestMeeting(req.user, req.params.id, req.body);

@@ -9,6 +9,7 @@ router.get("/:id", authenticate, interestsController.getById);
 router.post("/", authenticate, interestsController.express);
 router.post("/:id/time-slots", authenticate, interestsController.acknowledge);
 router.patch("/:id/withdraw", authenticate, interestsController.withdraw);
+router.patch("/:id/reinstate", authenticate, interestsController.reinstateWithdrawn);
 router.post("/:id/meeting-request", authenticate, interestsController.requestMeeting);
 
 module.exports = router;

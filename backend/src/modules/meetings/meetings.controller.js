@@ -38,6 +38,15 @@ const meetingsController = {
     }
   },
 
+  async patchJoinUrl(req, res, next) {
+    try {
+      const meeting = await meetingsService.patchJoinUrl(req.user, req.params.id, req.body);
+      success(res, meeting);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   async accept(req, res, next) {
     try {
       const meeting = await meetingsService.accept(req.user, req.params.id);

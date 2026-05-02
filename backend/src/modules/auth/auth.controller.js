@@ -27,7 +27,8 @@ const authController = {
 
   async verifyEmail(req, res, next) {
     try {
-      const { token } = req.body;
+      const raw = req.body?.token;
+      const token = String(raw ?? "").trim().replace(/\s+/g, "");
       if (!token) throw new ValidationError("Verification token is required.");
       const user = await authService.verifyEmail({ token, ipAddress: requestIp(req) });
       success(res, { message: "Email verified successfully. You can now log in.", user });
@@ -39,7 +40,13 @@ const authController = {
   async verifyEmailFromLink(req, res, next) {
     const frontendUrl = process.env.CORS_ORIGIN || "http://localhost:5173";
     try {
-      const token = String(req.query.token || "").trim();
+      let token = String(req.query.token || "").trim();
+      try {
+        token = decodeURIComponent(token);
+      } catch {
+        /* ignore */
+      }
+      token = token.replace(/\s+/g, "");
       if (!token) throw new ValidationError("Verification token is required.");
       await authService.verifyEmail({ token, ipAddress: requestIp(req) });
       const successUrl = new URL(frontendUrl);

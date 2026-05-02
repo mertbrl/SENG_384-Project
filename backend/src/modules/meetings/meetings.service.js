@@ -26,6 +26,25 @@ function normalizeSelectedSlot(selectedSlot) {
   return parsed;
 }
 
+/** Returns null to clear the link; otherwise a trimmed https? URL string. */
+function normalizeJoinUrl(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  if (s.length > 2000) {
+    throw new ValidationError("Join link is too long (max 2000 characters).");
+  }
+  let parsed;
+  try {
+    parsed = new URL(s);
+  } catch {
+    throw new ValidationError("Join link must be a valid http or https URL.");
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new ValidationError("Join link must start with http:// or https://");
+  }
+  return s;
+}
+
 function requireMeetingParticipant(meeting, user) {
   const isOwner = meeting.ownerId === user.id;
   const isRequester = meeting.requesterId === user.id;
@@ -167,6 +186,32 @@ const meetingsService = {
       details: "Meeting time slots added",
     });
     return meetingsRepository.findById(id);
+  },
+
+  async patchJoinUrl(user, id, input) {
+    const meeting = await this.getById(user, id);
+    if (meeting.status === "declined" || meeting.status === "cancelled") {
+      throw new ValidationError("Cannot set a join link for a cancelled or declined meeting.");
+    }
+    const joinUrl = normalizeJoinUrl(input.joinUrl);
+    await meetingsRepository.update(id, { joinUrl });
+    const updated = await meetingsRepository.findById(id);
+    const notifyUserId = meeting.ownerId === user.id ? meeting.requesterId : meeting.ownerId;
+    await meetingsRepository.createNotification({
+      userId: notifyUserId,
+      type: "meeting_update",
+      message: joinUrl
+        ? `A video meeting link was added for "${updated.post.title}".`
+        : `The video meeting link was removed for "${updated.post.title}".`,
+    });
+    await meetingsRepository.createActivityLog({
+      userId: user.id,
+      role: user.role,
+      actionType: "meeting_update",
+      targetEntity: meeting.id,
+      details: joinUrl ? "Meeting join URL set" : "Meeting join URL cleared",
+    });
+    return updated;
   },
 
   async confirmTimeSlot(user, id, slotId) {

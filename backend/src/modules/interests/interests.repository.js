@@ -79,6 +79,18 @@ const interestsRepository = {
     });
   },
 
+  findLatestForPostAndRequester(postId, requesterId) {
+    return prisma.interest.findFirst({
+      where: { postId, requesterId },
+      orderBy: { updatedAt: "desc" },
+      include: interestInclude,
+    });
+  },
+
+  deleteTimeSlotsForInterest(interestId) {
+    return prisma.interestTimeSlot.deleteMany({ where: { interestId } });
+  },
+
   create(data) {
     return prisma.interest.create({
       data,

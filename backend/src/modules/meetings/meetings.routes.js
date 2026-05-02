@@ -8,6 +8,7 @@ router.get("/", authenticate, meetingsController.list);
 router.get("/:id", authenticate, meetingsController.getById);
 router.post("/", authenticate, meetingsController.request);
 router.post("/:id/time-slots", authenticate, meetingsController.addTimeSlots);
+router.patch("/:id/join-url", authenticate, meetingsController.patchJoinUrl);
 router.patch("/:id", authenticate, meetingsController.update);
 router.patch("/:id/accept", authenticate, meetingsController.accept);
 router.patch("/:id/decline", authenticate, meetingsController.decline);

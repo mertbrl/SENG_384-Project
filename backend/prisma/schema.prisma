@@ -200,6 +200,8 @@ model Meeting {
   ndaAccepted  Boolean       @default(false)
   status       MeetingStatus @default(pending)
   selectedSlot DateTime?
+  /// Video call URL (Zoom, Teams, Google Meet, etc.) — optional until a participant saves it.
+  joinUrl      String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)

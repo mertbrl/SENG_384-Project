@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import ActivityChart from "./ActivityChart.jsx";
+import DomainDonutChart from "./DomainDonutChart.jsx";
+import { InterestSlotPlanner } from "./InterestSlotPlanner.jsx";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -76,6 +79,11 @@ const collaborationTypeOptions = [
   { value: "research_partner", label: "Research partner" },
 ];
 
+const confidentialityLabels = {
+  public: "Public — short pitch for discovery",
+  nda_required: "NDA path — details only after agreement / meeting",
+};
+
 const studioSteps = [
   { title: "Basic info", caption: "Title, domain and location" },
   { title: "Collaboration", caption: "Needs, expertise and stage" },
@@ -94,23 +102,50 @@ function toSentenceCase(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function formatApiError(payload) {
-  if (!payload) return "We could not complete your request.";
-  const baseMessage = payload.message && payload.message !== "Validation failed."
-    ? payload.message
-    : "Please check the highlighted fields and try again.";
+function formatApiErrorMessageWhenBodyMissing(response) {
+  const status = response?.status ?? 0;
+  if (!status || status === 502 || status === 503 || status === 504) {
+    return "Cannot reach the API. Start the backend (e.g. port 5001), confirm the database is running, and run prisma migrate if needed. Prisma Studio being open or closed does not affect registration.";
+  }
+  if (status >= 500) {
+    return "Server error. Check backend terminal logs, DATABASE_URL in backend/.env, and that Prisma migrations are applied (npm run db:migrate in backend).";
+  }
+  return "The server returned an error without details. For registration: use an .edu or .edu.tr email, password 8+ characters with one uppercase letter and one number, and fill every field.";
+}
 
-  if (!Array.isArray(payload.details) || !payload.details.length) {
+function formatApiError(payload, response) {
+  if (!payload) {
+    return formatApiErrorMessageWhenBodyMissing(response);
+  }
+
+  const hasDetails = Array.isArray(payload.details) && payload.details.length > 0;
+  const rawMessage = payload.message;
+  const hasMessage = typeof rawMessage === "string" && rawMessage.trim().length > 0;
+  const isEmptyObject = typeof payload === "object" && !Array.isArray(payload) && Object.keys(payload).length === 0;
+
+  if (!hasMessage && !hasDetails && isEmptyObject) {
+    return formatApiErrorMessageWhenBodyMissing(response);
+  }
+
+  const baseMessage =
+    hasMessage && rawMessage !== "Validation failed."
+      ? rawMessage
+      : "Please check the highlighted fields and try again.";
+
+  if (!hasDetails) {
     return baseMessage;
   }
 
   const detailText = payload.details
     .map((item) => {
-      const field = toSentenceCase(item?.path || "Field");
-      const message = String(item?.msg || "").trim();
+      if (!item || typeof item !== "object") return "";
+      const fieldPath = item.path || item.param || "";
+      const field = toSentenceCase(fieldPath) || "Field";
+      let message = "";
+      if (typeof item.msg === "string") message = item.msg.trim();
+      else if (item.msg != null) message = String(item.msg).trim();
       if (!message) return "";
-      // Avoid repeating field names when backend already includes it.
-      if (message.toLowerCase().includes(String(item?.path || "").toLowerCase())) {
+      if (fieldPath && message.toLowerCase().includes(String(fieldPath).toLowerCase())) {
         return message;
       }
       return `${field}: ${message}`;
@@ -141,7 +176,7 @@ async function api(path, { method = "GET", body, token, headers = {} } = {}) {
     : await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(formatApiError(payload));
+    throw new Error(formatApiError(payload, response));
   }
 
   return typeof payload === "string" ? payload : unwrap(payload);
@@ -153,10 +188,6 @@ function buildQuery(filters) {
     if (value) params.set(key, value);
   });
   return params.toString();
-}
-
-function splitLines(value) {
-  return String(value || "").split("\n").map((item) => item.trim()).filter(Boolean);
 }
 
 function labelFor(options, value) {
@@ -175,27 +206,128 @@ function validateRegisterForm(registerForm) {
   if (!registerForm.country?.trim()) return "Country is required.";
   if (!registerForm.city?.trim()) return "City is required.";
   if (!registerForm.expertise?.trim()) return "Expertise is required.";
-  if (!registerForm.privacyAccepted) return "Please agree to the Privacy Policy to create an account.";
+  if (!registerForm.privacyAccepted) {
+    return "Please agree to the Health AI Terms of Service and Privacy Policy to create an account.";
+  }
   return "";
 }
 
-function calculateMatchScore(post, currentUser) {
-  if (!post || !currentUser) return 0;
-  const cityScore = post.city === currentUser.city ? 30 : 0;
-  const countryScore = post.country === currentUser.country ? 15 : 0;
-  const roleScore = post.owner?.role && post.owner?.role !== currentUser.role ? 40 : 0;
-  const expertise = String(currentUser.expertise || "").toLowerCase();
+/**
+ * Match score for the signed-in viewer (not NLP on title text).
+ * Same city +30, same country +15, complementary owner role vs viewer +40,
+ * viewer expertise contains post domain or required expertise +15 (max 100).
+ */
+function computeMatchInsight(post, viewer) {
+  if (!post || !viewer) {
+    return { score: 0, lines: [], cityMatch: false, isOwnPost: false };
+  }
+  const isOwnPost = post.userId === viewer.id;
+  const lines = [];
+  let score = 0;
+
+  const cityOk =
+    Boolean(post.city && viewer.city) &&
+    String(post.city).trim().toLowerCase() === String(viewer.city).trim().toLowerCase();
+  if (cityOk) {
+    score += 30;
+    lines.push("Same city as you (+30)");
+  }
+
+  const countryOk =
+    Boolean(post.country && viewer.country) &&
+    String(post.country).trim().toLowerCase() === String(viewer.country).trim().toLowerCase();
+  if (countryOk) {
+    score += 15;
+    lines.push("Same country (+15)");
+  }
+
+  const ownerRole = post.owner?.role;
+  const roleOk = ownerRole && ownerRole !== viewer.role;
+  if (roleOk) {
+    score += 40;
+    lines.push("Different role than post owner — co-creation fit (+40)");
+  }
+
+  const expertise = String(viewer.expertise || "").toLowerCase();
   const domain = String(post.workingDomain || "").toLowerCase();
   const required = String(post.requiredExpertise || "").toLowerCase();
-  const domainScore = expertise.includes(domain) || expertise.includes(required) ? 15 : 0;
-  return Math.min(cityScore + countryScore + roleScore + domainScore, 100);
+  const domainOk =
+    (domain && expertise.includes(domain)) || (required && expertise.includes(required));
+  if (domainOk) {
+    score += 15;
+    lines.push("Your profile expertise overlaps domain or required skills (+15)");
+  }
+
+  if (!lines.length) {
+    lines.push("No location or expertise overlap yet — refine filters or your profile.");
+  }
+
+  if (isOwnPost) {
+    lines.unshift("Your announcement — score shows what a peer in your region would see.");
+  }
+
+  return {
+    score: Math.min(score, 100),
+    lines,
+    cityMatch: cityOk,
+    isOwnPost,
+  };
 }
 
-function chartSeries(values) {
-  const max = Math.max(...values, 1);
-  return values
-    .map((value, index) => `${(index / (values.length - 1)) * 100},${100 - (value / max) * 100}`)
-    .join(" ");
+const ADMIN_DOMAIN_COLORS = ["#2563eb", "#06b6d4", "#8b5cf6", "#f97316", "#22c55e"];
+
+function domainDonutModel(entries) {
+  const list = entries.length ? entries : [["Other", 1]];
+  const total = list.reduce((sum, [, c]) => sum + Number(c || 0), 0) || 1;
+  let acc = 0;
+  const segments = list.map(([domain, count], i) => {
+    const n = Number(count || 0);
+    const slice = (n / total) * 360;
+    const from = acc;
+    const to = acc + slice;
+    acc = to;
+    return {
+      domain,
+      count: n,
+      from,
+      to,
+      pct: total ? Math.round((n / total) * 100) : 0,
+      color: ADMIN_DOMAIN_COLORS[i % ADMIN_DOMAIN_COLORS.length],
+    };
+  });
+  const gradient = `conic-gradient(${segments.map((s) => `${s.color} ${s.from}deg ${s.to}deg`).join(", ")})`;
+  return { segments, gradient, total };
+}
+
+/** Wide viewBox so the chart fills horizontal panels (square viewBox + meet caused a tiny square). */
+function adminTrendChartModel(values, labels) {
+  const vals = values.length ? values : [0];
+  const maxRaw = Math.max(...vals, 1);
+  const n = vals.length;
+  const vbW = 400;
+  const vbH = 100;
+  const padL = 20;
+  const padR = 12;
+  const padT = 10;
+  const padB = 22;
+  const innerW = vbW - padL - padR;
+  const innerH = vbH - padT - padB;
+  const pts = vals.map((v, i) => {
+    const x = n <= 1 ? padL + innerW / 2 : padL + (i / (n - 1)) * innerW;
+    const vn = Math.max(Number(v) || 0, 0);
+    const yNorm = maxRaw > 0 ? vn / maxRaw : 0;
+    const y = padT + innerH - yNorm * innerH;
+    return { x, y, v: vn, label: labels[i] || "" };
+  });
+  const linePoints = pts.map((p) => `${p.x},${p.y}`).join(" ");
+  const baseY = padT + innerH;
+  let areaD = `M ${pts[0].x} ${baseY}`;
+  pts.forEach((p) => {
+    areaD += ` L ${p.x} ${p.y}`;
+  });
+  areaD += ` L ${pts[n - 1].x} ${baseY} Z`;
+  const gridYs = [0, 0.33, 0.66, 1].map((t) => padT + innerH - t * innerH);
+  return { pts, linePoints, areaD, gridYs, padL, padR, vbW, vbH, max: maxRaw };
 }
 
 function formatDate(value) {
@@ -203,6 +335,48 @@ function formatDate(value) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleString();
+}
+
+function formatDateShort(value) {
+  if (!value) return "Not set";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** Treats each scheduled slot as a 1h window after `selectedSlot` start; UI-only (DB status unchanged). */
+const MEETING_SLOT_WINDOW_MS = 60 * 60 * 1000;
+
+function isMeetingSlotMissed(meeting) {
+  if (meeting.status !== "scheduled") return false;
+  if (!meeting.selectedSlot) return false;
+  const start = new Date(meeting.selectedSlot).getTime();
+  if (Number.isNaN(start)) return false;
+  return Date.now() > start + MEETING_SLOT_WINDOW_MS;
+}
+
+function confidentialityLabel(value) {
+  if (!value) return "—";
+  return confidentialityLabels[value] || String(value).replaceAll("_", " ");
+}
+
+function createdSince(records, getDate, msAgo) {
+  if (!records?.length) return 0;
+  const cutoff = Date.now() - msAgo;
+  return records.filter((r) => {
+    const t = new Date(getDate(r)).getTime();
+    return !Number.isNaN(t) && t >= cutoff;
+  }).length;
+}
+
+function userInitials(fullName) {
+  if (!fullName?.trim()) return "?";
+  return fullName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
 }
 
 function downloadFile(filename, content, type) {
@@ -219,6 +393,19 @@ function StatusBadge({ status }) {
   return <span className={`status-badge status-${status}`}>{String(status).replaceAll("_", " ")}</span>;
 }
 
+function interestFlowHint(status) {
+  if (status === "pending") {
+    return "Waiting for the post owner to propose time slots. Continue in Interests.";
+  }
+  if (status === "acknowledged") {
+    return "The owner proposed times — open Interests to pick a slot and send a meeting request.";
+  }
+  if (status === "meeting_requested") {
+    return "Meeting request sent. Open Meetings to accept or confirm a slot.";
+  }
+  return "Continue in Interests.";
+}
+
 function StatCard({ label, value, hint }) {
   return (
     <article className="metric-card">
@@ -226,6 +413,67 @@ function StatCard({ label, value, hint }) {
       <strong>{value}</strong>
       <small>{hint}</small>
     </article>
+  );
+}
+
+function OverviewStatCard({ icon, label, value, sub }) {
+  return (
+    <article className="dash-stat-card">
+      <div className="dash-stat-icon-wrap" aria-hidden>
+        {icon}
+      </div>
+      <div className="dash-stat-copy">
+        <span className="dash-stat-label">{label}</span>
+        <strong className="dash-stat-value">{value}</strong>
+        {sub ? <span className="dash-stat-sub">{sub}</span> : null}
+      </div>
+    </article>
+  );
+}
+
+function PostStatusPanel({ rows }) {
+  return (
+    <div className="dash-card dash-card--compact">
+      <div className="card-header">
+        <div className="card-title">Post status breakdown</div>
+      </div>
+      <ul className="dash-status-list">
+        {rows.map((row) => (
+          <li key={row.key}>
+            <span className="dash-status-name">{row.label}</span>
+            <span className={`dash-status-pill tone-${row.tone}`}>{row.count}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function RecentActivityPanel({ items }) {
+  return (
+    <div className="dash-card dash-card--compact">
+      <div className="card-header">
+        <div>
+          <div className="card-title">Recent activity</div>
+          <div className="card-sub">Latest platform events</div>
+        </div>
+      </div>
+      <ul className="dash-activity-list">
+        {items.length ? (
+          items.map((item, i) => (
+            <li key={`${item.title}-${i}`}>
+              <span className={`dash-activity-dot ${item.tone === "bad" ? "is-bad" : item.tone === "ok" ? "is-ok" : "is-muted"}`} aria-hidden />
+              <div>
+                <div className="dash-activity-title">{item.title}</div>
+                <div className="dash-activity-meta">{item.meta}</div>
+              </div>
+            </li>
+          ))
+        ) : (
+          <li className="dash-activity-empty">No recent events in this view.</li>
+        )}
+      </ul>
+    </div>
   );
 }
 
@@ -292,6 +540,7 @@ function App() {
   });
   const [view, setView] = useState("login");
   const [activeTab, setActiveTab] = useState("feed");
+  const [feedSection, setFeedSection] = useState("overview");
   const [locations, setLocations] = useState([]);
   const [loginForm, setLoginForm] = useState(emptyLoginForm);
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
@@ -306,15 +555,10 @@ function App() {
   const [interestDraft, setInterestDraft] = useState({ message: "" });
   const [showNdaModal, setShowNdaModal] = useState(false);
   const [ndaAcceptedForInterest, setNdaAcceptedForInterest] = useState(false);
-  const [interestSlotDrafts, setInterestSlotDrafts] = useState({});
   const [interestSelections, setInterestSelections] = useState({});
   const [interestMeetingDrafts, setInterestMeetingDrafts] = useState({});
   const [meetings, setMeetings] = useState([]);
-  const [meetingDraft, setMeetingDraft] = useState({
-    message: "",
-    ndaAccepted: false,
-    proposedSlots: "2026-04-22T10:00\n2026-04-22T14:00",
-  });
+  const [meetingJoinDrafts, setMeetingJoinDrafts] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileForm, setProfileForm] = useState(emptyProfile);
@@ -332,6 +576,7 @@ function App() {
 
   const token = session?.token || "";
   const user = session?.user || null;
+  const adminTrendChartId = useId().replaceAll(":", "");
 
   const cityOptions = useMemo(() => {
     const selectedCountry = locations.find((country) => country.name === (postForm.country || profileForm.country || registerForm.country));
@@ -349,7 +594,17 @@ function App() {
   );
 
   const scoredPosts = useMemo(
-    () => posts.map((post) => ({ ...post, healthAiMatchScore: calculateMatchScore(post, user) })),
+    () =>
+      posts.map((post) => {
+        const insight = computeMatchInsight(post, user);
+        return {
+          ...post,
+          healthAiMatchScore: insight.score,
+          matchScoreLines: insight.lines,
+          cityMatch: insight.cityMatch,
+          matchIsOwnPost: insight.isOwnPost,
+        };
+      }),
     [posts, user]
   );
 
@@ -369,6 +624,68 @@ function App() {
     });
     return Object.entries(countMap).slice(0, 5);
   }, [posts]);
+
+  const overviewDateLabel = useMemo(
+    () => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+    []
+  );
+
+  const postsCreatedWeek = useMemo(() => createdSince(posts, (p) => p.createdAt, 7 * 86400000), [posts]);
+  const postsCreatedMonth = useMemo(() => createdSince(posts, (p) => p.createdAt, 30 * 86400000), [posts]);
+  const interestsMonth = useMemo(() => createdSince(interests, (i) => i.createdAt, 30 * 86400000), [interests]);
+  const meetingsWeek = useMemo(() => createdSince(meetings, (m) => m.createdAt, 7 * 86400000), [meetings]);
+
+  const postStatusRows = useMemo(() => {
+    if (user?.role === "admin" && adminStats?.postsByStatus?.length) {
+      const toneFor = (s) => {
+        if (s === "active") return "active";
+        if (s === "partner_found") return "closed";
+        if (s === "meeting_scheduled") return "meet";
+        return "neutral";
+      };
+      return adminStats.postsByStatus.map((item) => ({
+        key: item.status,
+        label: String(item.status).replaceAll("_", " "),
+        count: item._count.status,
+        tone: toneFor(item.status),
+      }));
+    }
+    const order = ["active", "meeting_scheduled", "partner_found", "draft", "expired"];
+    const labels = {
+      active: "Active",
+      meeting_scheduled: "Meeting scheduled",
+      partner_found: "Partner found",
+      draft: "Draft",
+      expired: "Expired",
+    };
+    const counts = {};
+    posts.forEach((p) => {
+      counts[p.status] = (counts[p.status] || 0) + 1;
+    });
+    return order
+      .filter((k) => counts[k])
+      .map((k) => ({
+        key: k,
+        label: labels[k] || k,
+        count: counts[k],
+        tone: k === "active" ? "active" : k === "partner_found" ? "closed" : k === "meeting_scheduled" ? "meet" : "neutral",
+      }));
+  }, [user?.role, adminStats, posts]);
+
+  const recentActivityItems = useMemo(() => {
+    if (user?.role === "admin" && adminLogs.length) {
+      return adminLogs.slice(0, 8).map((log) => ({
+        title: String(log.actionType || "").replaceAll("_", " "),
+        meta: `${log.role} · ${formatDate(log.timestamp)}`,
+        tone: log.resultStatus === "failure" ? "bad" : "ok",
+      }));
+    }
+    return (notifications || []).slice(0, 8).map((n) => ({
+      title: n.message,
+      meta: formatDate(n.createdAt),
+      tone: n.read ? "neutral" : "ok",
+    }));
+  }, [user?.role, adminLogs, notifications]);
 
   useEffect(() => {
     api("/locations")
@@ -435,6 +752,21 @@ function App() {
     }
   }, [filters]);
 
+  useEffect(() => {
+    if (activeTab !== "feed" || feedSection !== "browse") {
+      setSelectedPost(null);
+    }
+  }, [activeTab, feedSection]);
+
+  useEffect(() => {
+    if (!selectedPost || activeTab !== "feed" || feedSection !== "browse") return undefined;
+    function onKeyDown(event) {
+      if (event.key === "Escape") setSelectedPost(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedPost, activeTab, feedSection]);
+
   async function authorized(path, options = {}) {
     return api(path, { ...options, token });
   }
@@ -443,7 +775,6 @@ function App() {
     const query = buildQuery(filters);
     const result = await authorized(`/posts${query ? `?${query}` : ""}`);
     setPosts(result.posts || []);
-    if (!selectedPost && result.posts?.length) setSelectedPost(result.posts[0]);
   }
 
   async function refreshAll() {
@@ -472,7 +803,6 @@ function App() {
         expertise: profileResult.expertise || "",
         bio: profileResult.bio || "",
       });
-      if (!selectedPost && postResult.posts?.length) setSelectedPost(postResult.posts[0]);
       if (me.role === "admin") {
         const [overview, users, adminPostResult, logs, adminStatResult, anomalyResult] = await Promise.all([
           authorized("/admin/overview"),
@@ -496,14 +826,15 @@ function App() {
 
   async function handleLogin(event) {
     event.preventDefault();
-    setLoading(true);
     setAuthInlineError("");
+    setLoading(true);
     setError("");
     setMessage("");
     try {
       const result = await api("/auth/login", { method: "POST", body: loginForm });
       setSession(result);
-      setActiveTab(result.user.role === "admin" ? "admin" : "feed");
+      setActiveTab("feed");
+      setFeedSection("overview");
       setMessage("Welcome back to Health AI.");
     } catch (caughtError) {
       setError(caughtError.message);
@@ -524,7 +855,7 @@ function App() {
     setError("");
     setMessage("");
     try {
-      const { privacyAccepted, ...registerPayload } = registerForm;
+      const { privacyAccepted: _privacyAccepted, ...registerPayload } = registerForm;
       const result = await api("/auth/register", { method: "POST", body: registerPayload });
       setVerificationToken("");
       setView("verify");
@@ -542,9 +873,16 @@ function App() {
     setError("");
     setMessage("");
     try {
+      let token = String(verificationToken || "").trim();
+      try {
+        token = decodeURIComponent(token);
+      } catch {
+        /* ignore */
+      }
+      token = token.replace(/\s+/g, "");
       const result = await api("/auth/verify-email", {
         method: "POST",
-        body: { token: verificationToken },
+        body: { token },
       });
       setLoginForm({ email: result.user?.email || registerForm.email, password: registerForm.password });
       setView("login");
@@ -677,6 +1015,10 @@ function App() {
 
   async function expressInterest() {
     if (!selectedPost) return;
+    if (!String(interestDraft.message || "").trim()) {
+      setError("Please add a short first-contact message.");
+      return;
+    }
     if (!ndaAcceptedForInterest) {
       setError("Please accept the NDA terms to continue.");
       return;
@@ -699,19 +1041,19 @@ function App() {
     }
   }
 
-  async function proposeInterestSlots(interest) {
+  async function proposeInterestSlots(interest, proposedSlots) {
     setError("");
     setMessage("");
     try {
       await authorized(`/interests/${interest.id}/time-slots`, {
         method: "POST",
-        body: { proposedSlots: splitLines(interestSlotDrafts[interest.id]) },
+        body: { proposedSlots },
       });
-      setInterestSlotDrafts((current) => ({ ...current, [interest.id]: "" }));
       setMessage("Time slots proposed.");
       await refreshAll();
     } catch (caughtError) {
       setError(caughtError.message);
+      throw caughtError;
     }
   }
 
@@ -727,11 +1069,27 @@ function App() {
     }
   }
 
-  async function requestMeetingFromInterest(interest) {
+  async function reinstateInterest(interest) {
     setError("");
     setMessage("");
     try {
-      const draft = interestMeetingDrafts[interest.id] || {};
+      await authorized(`/interests/${interest.id}/reinstate`, { method: "PATCH" });
+      setMessage("Interest reinstated. Proposed times were cleared; the owner can propose new slots.");
+      await refreshAll();
+    } catch (caughtError) {
+      setError(caughtError.message);
+    }
+  }
+
+  async function requestMeetingFromInterest(interest) {
+    setError("");
+    setMessage("");
+    const draft = interestMeetingDrafts[interest.id] || {};
+    if (!draft.ndaAccepted) {
+      setError("Please accept the NDA and first-contact terms before sending a meeting request.");
+      return;
+    }
+    try {
       const slotId = interestSelections[interest.id] || interest.timeSlots?.[0]?.id;
       await authorized(`/interests/${interest.id}/meeting-request`, {
         method: "POST",
@@ -743,28 +1101,6 @@ function App() {
       });
       setInterestMeetingDrafts((current) => ({ ...current, [interest.id]: { message: "", ndaAccepted: false } }));
       setMessage("Meeting request sent to the post owner.");
-      await refreshAll();
-    } catch (caughtError) {
-      setError(caughtError.message);
-    }
-  }
-
-  async function sendMeetingRequest() {
-    if (!selectedPost) return;
-    setError("");
-    setMessage("");
-    try {
-      await authorized("/meetings", {
-        method: "POST",
-        body: {
-          postId: selectedPost.id,
-          message: meetingDraft.message,
-          ndaAccepted: meetingDraft.ndaAccepted,
-          proposedSlots: meetingDraft.proposedSlots.split("\n").map((slot) => slot.trim()).filter(Boolean),
-        },
-      });
-      setMeetingDraft({ message: "", ndaAccepted: false, proposedSlots: "2026-04-22T10:00\n2026-04-22T14:00" });
-      setMessage("Meeting request sent.");
       await refreshAll();
     } catch (caughtError) {
       setError(caughtError.message);
@@ -789,6 +1125,40 @@ function App() {
     try {
       await authorized(`/meetings/${meeting.id}/time-slots/${slotId}/confirm`, { method: "PATCH" });
       setMessage("Meeting slot confirmed.");
+      await refreshAll();
+    } catch (caughtError) {
+      setError(caughtError.message);
+    }
+  }
+
+  async function saveMeetingJoinUrl(meeting) {
+    setError("");
+    setMessage("");
+    const raw = meetingJoinDrafts[meeting.id] !== undefined ? meetingJoinDrafts[meeting.id] : meeting.joinUrl || "";
+    try {
+      await authorized(`/meetings/${meeting.id}/join-url`, {
+        method: "PATCH",
+        body: { joinUrl: String(raw).trim() },
+      });
+      setMeetingJoinDrafts((current) => {
+        const next = { ...current };
+        delete next[meeting.id];
+        return next;
+      });
+      setMessage("Video meeting link saved.");
+      await refreshAll();
+    } catch (caughtError) {
+      setError(caughtError.message);
+    }
+  }
+
+  async function clearMeetingJoinUrl(meeting) {
+    setError("");
+    setMessage("");
+    try {
+      await authorized(`/meetings/${meeting.id}/join-url`, { method: "PATCH", body: { joinUrl: "" } });
+      setMeetingJoinDrafts((current) => ({ ...current, [meeting.id]: "" }));
+      setMessage("Video meeting link removed.");
       await refreshAll();
     } catch (caughtError) {
       setError(caughtError.message);
@@ -919,16 +1289,18 @@ function App() {
           }}
         />
         <section className="auth-visual">
-          <div className="brand-mark">
-            <small>Pi-thon Dynamics</small>
-          </div>
           <div className="visual-overlay-text">
-            <h1>Secure healthcare collaboration platform</h1>
-            <p>Built for secure collaboration between clinical and engineering teams.</p>
+            <h1>🔬 HEALTH AI Co-Creation Platform</h1>
+            <p className="visual-overlay-lead">Engineers meet Clinicians.</p>
+            <p className="visual-overlay-lead">Build healthcare's future together.</p>
           </div>
         </section>
 
         <section className="auth-panel clean-auth-panel">
+          <div className="auth-panel-brand" aria-label="Studio">
+            <small className="brand-mark-tagline">Pi-thon Dynamics</small>
+          </div>
+          <div className="auth-panel-stack">
           {view === "login" && (
             <form className="form-stack auth-form" onSubmit={handleLogin}>
               <h2>Welcome to Health AI</h2>
@@ -984,7 +1356,7 @@ function App() {
                 <SelectField label="City" value={registerForm.city} onChange={(city) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, city }); }} options={citySelectOptions.length ? citySelectOptions : [{ value: "Ankara", label: "Ankara" }]} />
                 <Field label="Expertise" value={registerForm.expertise} onChange={(expertise) => { setRegisterInlineError(""); setRegisterForm({ ...registerForm, expertise }); }} />
               </div>
-              <label className="privacy-check">
+              <label className="privacy-check auth-legal-check">
                 <input
                   type="checkbox"
                   checked={registerForm.privacyAccepted}
@@ -993,7 +1365,17 @@ function App() {
                     setRegisterForm({ ...registerForm, privacyAccepted: event.target.checked });
                   }}
                 />
-                I agree to the Privacy Policy
+                <span>
+                  I agree to the Health AI{" "}
+                  <a className="text-link" href="/privacy.html#terms-of-service" target="_blank" rel="noopener noreferrer">
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a className="text-link" href="/privacy.html#introduction" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>
+                  .
+                </span>
               </label>
               {registerInlineError && <p className="auth-inline-error" role="alert">{registerInlineError}</p>}
               <button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Account"}</button>
@@ -1017,163 +1399,358 @@ function App() {
               </p>
             </form>
           )}
+          </div>
         </section>
       </main>
     );
   }
 
+  const adminMeetingsTotal = adminOverview
+    ? (adminOverview.pendingMeetings || 0) + (adminOverview.scheduledMeetings || 0)
+    : 0;
+
   return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div>
-          <p className="eyebrow">Health AI</p>
-          <h2>{user.fullName}</h2>
-          <p className="sidebar-copy">{user.role} at {user.institution || "institution not set"}</p>
+    <main className="app-shell dash-theme">
+      <aside className="sidebar dash-sidebar">
+        <div className="dash-brand">
+          <div className="dash-brand-mark" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2v18M2 11h18" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="11" cy="11" r="4.2" stroke="#fff" strokeWidth="1.8" />
+            </svg>
+          </div>
+          <div>
+            <p className="dash-brand-title">HEALTH AI</p>
+            <p className="dash-brand-sub">Pi-thon Dynamics</p>
+          </div>
         </div>
-        <nav className="sidebar-nav">
-          {[
-            ["feed", "Posts"],
-            ["interests", "Interests"],
-            ["composer", "Announcement Studio"],
-            ["meetings", "Meetings"],
-            ["notifications", `Notifications ${unreadCount ? `(${unreadCount})` : ""}`],
-            ["profile", "Profile"],
-          ].map(([tab, label]) => (
-            <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-              {label}
-            </button>
-          ))}
+
+        <nav className="sidebar-nav dash-sidebar-nav">
+          <p className="nav-group-label">Main</p>
+          <button
+            type="button"
+            className={activeTab === "feed" && feedSection === "overview" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("feed");
+              setFeedSection("overview");
+            }}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            className={activeTab === "feed" && feedSection === "browse" ? "active" : ""}
+            onClick={() => {
+              setActiveTab("feed");
+              setFeedSection("browse");
+            }}
+          >
+            Browse posts
+            <span className="nav-badge">{posts.length}</span>
+          </button>
+          <button type="button" className={activeTab === "interests" ? "active" : ""} onClick={() => setActiveTab("interests")}>Interests</button>
+          <button type="button" className={activeTab === "composer" ? "active" : ""} onClick={() => setActiveTab("composer")}>Announcement studio</button>
+          <button type="button" className={activeTab === "meetings" ? "active" : ""} onClick={() => setActiveTab("meetings")}>
+            Meetings
+            {stats.pendingMeetings > 0 ? <span className="nav-badge">{stats.pendingMeetings}</span> : null}
+          </button>
+
           {user.role === "admin" && (
-            <button className={activeTab === "admin" ? "active" : ""} onClick={() => setActiveTab("admin")}>Admin</button>
+            <>
+              <p className="nav-group-label">Admin</p>
+              <button type="button" className={activeTab === "admin" ? "active" : ""} onClick={() => setActiveTab("admin")}>Users, posts &amp; audit logs</button>
+            </>
           )}
         </nav>
-        <div className="sidebar-footer">
-          <button className="ghost-button" onClick={logout}>Logout</button>
-          <small>by Pi-thon Dynamics</small>
+
+        <div className="sidebar-footer dash-sidebar-footer">
+          <button type="button" className="ghost-button" onClick={logout}>Logout</button>
+          <small>{user.city}, {user.country}</small>
         </div>
       </aside>
 
-      <section className="content">
-        <Toaster
-          position="bottom-center"
-          toastOptions={{
-            duration: 3200,
-            style: {
-              maxWidth: "560px",
-              background: "rgba(9, 52, 89, 0.94)",
-              color: "#ffffff",
-              border: "1px solid rgba(255, 255, 255, 0.26)",
-              borderRadius: "12px",
-            },
-          }}
-        />
-        <header className="topbar">
-          <div>
-            <h1>{activeTab === "feed" ? "Dashboard" : activeTab === "composer" ? "Create New Announcement" : activeTab === "admin" ? "Admin Command Center" : activeTab[0].toUpperCase() + activeTab.slice(1)}</h1>
+      <section className="content dash-content">
+        <div className="dash-content-user-bar" role="region" aria-label="Signed-in account">
+          <div className="dash-content-user-main">
+            <div className="dash-user-avatar dash-user-avatar--content" aria-hidden>
+              {userInitials(user.fullName)}
+            </div>
+            <div className="dash-content-user-text">
+              <p className="dash-content-user-line">
+                <span className="dash-content-user-name">{user.fullName}</span>
+                <span className="dash-content-user-meta-sep" aria-hidden="true">
+                  {" "}
+                  ·{" "}
+                </span>
+                <span className="dash-content-user-role">{user.role}</span>
+              </p>
+            </div>
           </div>
-          <span className="notification-pill">{user.city}, {user.country}</span>
+          <div className="dash-content-user-actions">
+            <div className="dash-notify-wrap">
+              <button
+                type="button"
+                className={`dash-icon-btn${activeTab === "notifications" ? " dash-icon-btn--active" : ""}`}
+                title="Notifications"
+                aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : "Open notifications"}
+                onClick={() => setActiveTab("notifications")}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+              </button>
+              {unreadCount > 0 ? (
+                <span className="dash-notify-badge" aria-hidden>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className={`dash-icon-btn${activeTab === "profile" ? " dash-icon-btn--active" : ""}`}
+              title="Profile"
+              aria-label="Open profile"
+              onClick={() => setActiveTab("profile")}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <header className="topbar dash-topbar">
+          <div>
+            <h1>
+              {activeTab === "feed" && feedSection === "overview"
+                ? "Platform overview"
+                : activeTab === "feed" && feedSection === "browse"
+                  ? "Browse posts"
+                  : activeTab === "composer"
+                    ? "Create new announcement"
+                    : activeTab === "admin"
+                      ? "Admin command center"
+                      : `${activeTab[0].toUpperCase()}${activeTab.slice(1)}`}
+            </h1>
+            {activeTab === "feed" && feedSection === "overview" && (
+              <p className="topbar-sub">
+                {overviewDateLabel}
+                {" — "}
+                {user.role === "admin" ? "All-time statistics (admin)" : "Statistics from your current post list & activity"}
+              </p>
+            )}
+          </div>
         </header>
 
         {activeTab === "feed" && (
-          <section className="stack">
-            <div className="metrics-row">
-              <StatCard label="Active posts" value={stats.activePosts} hint="Published opportunities" />
-              <StatCard label="My posts" value={stats.ownPosts} hint="Owned by current account" />
-              <StatCard label="Interests" value={stats.activeInterests} hint="First-contact flows" />
-              <StatCard label="Pending meetings" value={stats.pendingMeetings} hint="Awaiting decision" />
-              <StatCard label="Unread" value={unreadCount} hint="Notifications" />
-            </div>
-            <section className="panel">
-              <div className="panel-header">
-                <div>
-                  <h2>Search and filters</h2>
-                  <p>Filter by city, country, expertise, domain, stage or lifecycle status.</p>
+          <section className="stack dash-feed-stack">
+            {feedSection === "overview" && (
+              <>
+                <div className="dash-stats-row">
+                  {user.role === "admin" && adminOverview ? (
+                    <>
+                      <OverviewStatCard icon="👥" label="Registered users" value={adminOverview.totalUsers} sub={`${adminOverview.verifiedUsers} verified`} />
+                      <OverviewStatCard icon="📄" label="Active posts" value={adminOverview.activePosts} sub={`${postsCreatedMonth} new in list (30d)`} />
+                      <OverviewStatCard icon="📅" label="Meetings scheduled" value={adminMeetingsTotal} sub={`${meetingsWeek} meeting events (7d)`} />
+                      <OverviewStatCard icon="⭐" label="Successful matches" value={adminOverview.partnerFoundPosts} sub="Posts marked partner found" />
+                    </>
+                  ) : (
+                    <>
+                      <OverviewStatCard icon="📄" label="Posts in view" value={posts.length} sub={postsCreatedWeek ? `+${postsCreatedWeek} new this week` : "—"} />
+                      <OverviewStatCard icon="✅" label="Active posts" value={stats.activePosts} sub="Published in current filters" />
+                      <OverviewStatCard icon="💬" label="Interests" value={stats.activeInterests} sub={interestsMonth ? `+${interestsMonth} this month` : "—"} />
+                      <OverviewStatCard icon="📅" label="Pending meetings" value={stats.pendingMeetings} sub={meetingsWeek ? `+${meetingsWeek} this week` : "—"} />
+                    </>
+                  )}
                 </div>
-                <button className="ghost-button" onClick={() => setFilters(emptyFilters)}>Clear</button>
-              </div>
-              <div className="filter-grid">
-                <Field label="Search" value={filters.search} onChange={(search) => setFilters({ ...filters, search })} />
-                <Field label="Domain" value={filters.domain} onChange={(domain) => setFilters({ ...filters, domain })} />
-                <Field label="City" value={filters.city} onChange={(city) => setFilters({ ...filters, city })} />
-                <Field label="Expertise" value={filters.expertise} onChange={(expertise) => setFilters({ ...filters, expertise })} />
-                <SelectField label="Stage" value={filters.stage} onChange={(stage) => setFilters({ ...filters, stage })} options={[{ value: "", label: "Any" }, ...projectStageOptions]} />
-                <SelectField label="Status" value={filters.status} onChange={(status) => setFilters({ ...filters, status })} options={[{ value: "", label: "Any" }, { value: "draft", label: "Draft" }, { value: "active", label: "Active" }, { value: "meeting_scheduled", label: "Meeting scheduled" }, { value: "partner_found", label: "Partner found" }, { value: "expired", label: "Expired" }]} />
-              </div>
-            </section>
-            <section className="dashboard-grid">
-              <div className="panel">
-                <div className="panel-header">
-                  <div>
-                    <h2>Posts</h2>
-                    <p>Select a post to inspect details or start the meeting workflow.</p>
-                  </div>
-                  <button onClick={() => { resetComposer(); setActiveTab("composer"); }}>New post</button>
+                <div className="dash-charts-row">
+                  <ActivityChart posts={posts} interests={interests} />
+                  <DomainDonutChart posts={posts} />
                 </div>
-                <div className="card-grid">
-                  {scoredPosts.map((post) => (
-                    <article className={`post-card ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""}`} key={post.id} onClick={() => setSelectedPost(post)}>
-                      <div className="card-topline">
-                        <span>{post.workingDomain}</span>
-                        <StatusBadge status={post.status} />
-                      </div>
-                      <h3>{post.title}</h3>
-                      <p>{post.shortExplanation || post.description || "No summary provided."}</p>
-                      <div className="meta-list">
-                        <span>{post.requiredExpertise}</span>
-                        <span>{post.city}, {post.country}</span>
-                        <span>{labelFor(projectStageOptions, post.projectStage)}</span>
-                        <span className="score-badge">Match Score {post.healthAiMatchScore}</span>
-                        {post.cityMatch && <span>Local match</span>}
-                      </div>
-                      <small>{post.matchExplanation}</small>
-                    </article>
-                  ))}
-                  {!posts.length && <EmptyState title="No posts found" text="Adjust filters or create the first opportunity." />}
+                <div className="dash-bottom-row">
+                  <PostStatusPanel rows={postStatusRows.length ? postStatusRows : [{ key: "none", label: "No status data yet", count: 0, tone: "neutral" }]} />
+                  <RecentActivityPanel items={recentActivityItems} />
                 </div>
-              </div>
+                <div className="dash-overview-cta">
+                  <button type="button" className="ghost-button" onClick={() => setFeedSection("browse")}>Open post directory →</button>
+                  <button type="button" onClick={() => { resetComposer(); setActiveTab("composer"); }}>New announcement</button>
+                </div>
+              </>
+            )}
 
-              <div className="panel detail-panel">
-                {selectedPost ? (
-                  <>
+            {feedSection === "browse" && (
+              <>
+                <section className="panel dash-panel browse-filters-panel">
+                  <div className="panel-header browse-filters-header">
+                    <div>
+                      <h2>Filters</h2>
+                      <p className="browse-filters-lead">Refine the list — all fields are optional.</p>
+                    </div>
+                    <button type="button" className="ghost-button browse-filters-clear" onClick={() => setFilters(emptyFilters)}>
+                      Clear all
+                    </button>
+                  </div>
+                  <div className="filter-grid browse-filters-grid">
+                    <Field label="Search" value={filters.search} onChange={(search) => setFilters({ ...filters, search })} />
+                    <Field label="Domain" value={filters.domain} onChange={(domain) => setFilters({ ...filters, domain })} />
+                    <Field label="City" value={filters.city} onChange={(city) => setFilters({ ...filters, city })} />
+                    <Field label="Expertise" value={filters.expertise} onChange={(expertise) => setFilters({ ...filters, expertise })} />
+                    <SelectField label="Stage" value={filters.stage} onChange={(stage) => setFilters({ ...filters, stage })} options={[{ value: "", label: "Any" }, ...projectStageOptions]} />
+                    <SelectField label="Status" value={filters.status} onChange={(status) => setFilters({ ...filters, status })} options={[{ value: "", label: "Any" }, { value: "draft", label: "Draft" }, { value: "active", label: "Active" }, { value: "meeting_scheduled", label: "Meeting scheduled" }, { value: "partner_found", label: "Partner found" }, { value: "expired", label: "Expired" }]} />
+                  </div>
+                </section>
+                <section className="browse-posts-board">
+                  <div className="panel dash-panel browse-posts-panel">
                     <div className="panel-header">
                       <div>
-                        <h2>{selectedPost.title}</h2>
-                        <p>{selectedPost.owner?.fullName} at {selectedPost.owner?.institution || "institution not set"}</p>
+                        <h2>Posts</h2>
+                        <p>Cards in a board layout — open one for full details and actions.</p>
                       </div>
-                      <StatusBadge status={selectedPost.status} />
+                      <button type="button" onClick={() => { resetComposer(); setActiveTab("composer"); }}>New post</button>
                     </div>
-                    <p>{selectedPost.description || selectedPost.highLevelIdea || "No detailed explanation yet."}</p>
-                    <div className="detail-grid">
-                      <div><strong>Healthcare need</strong><p>{selectedPost.healthcareNeed || "Not specified"}</p></div>
-                      <div><strong>Technical need</strong><p>{selectedPost.technicalNeed || "Not specified"}</p></div>
-                      <div><strong>Confidentiality</strong><p>{selectedPost.confidentialityLevel}</p></div>
-                      <div><strong>Expires</strong><p>{formatDate(selectedPost.expiryDate)}</p></div>
+                    <div className="card-grid browse-board-grid">
+                      {scoredPosts.map((post) => (
+                        <article
+                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""}`}
+                          key={post.id}
+                          onClick={() => setSelectedPost(post)}
+                        >
+                          <div className="card-topline">
+                            <span>{post.workingDomain}</span>
+                            <StatusBadge status={post.status} />
+                          </div>
+                          <h3>{post.title}</h3>
+                          <p>{post.shortExplanation || post.description || "No summary provided."}</p>
+                          <div className="meta-list">
+                            <span>{post.requiredExpertise}</span>
+                            <span>{post.city}, {post.country}</span>
+                            <span>{labelFor(projectStageOptions, post.projectStage)}</span>
+                            <span className="score-badge" title={post.matchScoreLines?.join("\n")}>
+                              Match {post.healthAiMatchScore}/100
+                            </span>
+                            {post.cityMatch ? <span className="meta-pill-local">Same city</span> : null}
+                          </div>
+                          <p className="post-card-match-hint">
+                            {(post.matchIsOwnPost ? post.matchScoreLines.slice(1) : post.matchScoreLines).slice(0, 3).join(" · ")}
+                          </p>
+                        </article>
+                      ))}
+                      {!posts.length && <EmptyState title="No posts found" text="Adjust filters or create the first opportunity." />}
                     </div>
-                    <div className="card-actions">
-                      {selectedPost.userId === user.id && <button className="ghost-button" onClick={() => editPost(selectedPost)}>Edit</button>}
-                      {selectedPost.userId === user.id && selectedPost.status !== "partner_found" && <button onClick={() => updatePostStatus(selectedPost.id, "partner_found")}>Partner found</button>}
-                      {selectedPost.userId === user.id && selectedPost.status !== "expired" && <button className="ghost-button" onClick={() => updatePostStatus(selectedPost.id, "expired")}>Expire</button>}
-                      {selectedPost.userId === user.id && <button className="danger-button" onClick={() => deletePost(selectedPost.id)}>Delete</button>}
-                    </div>
-                    {selectedPost.userId !== user.id && selectedPost.status === "active" && (
-                      <div className="meeting-form">
-                        <h3>Express interest</h3>
-                        <p>Send a short first-contact note and confirm NDA acceptance before proceeding.</p>
-                        <TextAreaField label="Short message" value={interestDraft.message} onChange={(messageValue) => setInterestDraft({ message: messageValue })} />
-                        <button onClick={() => setShowNdaModal(true)}>Send interest</button>
+                  </div>
+                </section>
+                {selectedPost && (
+                  <div
+                    className="post-detail-modal-backdrop"
+                    role="presentation"
+                    onClick={(event) => {
+                      if (event.target === event.currentTarget) setSelectedPost(null);
+                    }}
+                  >
+                    <div
+                      className="post-detail-modal"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-labelledby="post-detail-modal-title"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="post-detail-modal-header">
+                        <button type="button" className="post-detail-modal-close" aria-label="Close" onClick={() => setSelectedPost(null)}>
+                          ×
+                        </button>
                       </div>
-                    )}
-                  </>
-                ) : (
-                  <EmptyState title="Open a post" text="Select a post card from the left panel." />
+                      <div className="post-detail-modal-body detail-panel dash-panel">
+                        <div className="detail-panel-layout">
+                          {(() => {
+                            const detailScored = scoredPosts.find((p) => p.id === selectedPost.id);
+                            const insight = detailScored || computeMatchInsight(selectedPost, user);
+                            return (
+                              <aside className="detail-match-rail" aria-label="Match score for you">
+                                <div className="detail-match-score">{insight.healthAiMatchScore ?? insight.score}/100</div>
+                                <p className="detail-match-label">Match for you</p>
+                                <ul className="detail-match-list">
+                                  {(insight.matchScoreLines || insight.lines || []).map((line, idx) => (
+                                    <li key={idx}>{line}</li>
+                                  ))}
+                                </ul>
+                              </aside>
+                            );
+                          })()}
+                          <div className="detail-panel-main">
+                            <div className="panel-header">
+                              <div>
+                                <h2 id="post-detail-modal-title">{selectedPost.title}</h2>
+                                <p>{selectedPost.owner?.fullName} at {selectedPost.owner?.institution || "institution not set"}</p>
+                              </div>
+                              <StatusBadge status={selectedPost.status} />
+                            </div>
+                            <p>{selectedPost.description || selectedPost.highLevelIdea || "No detailed explanation yet."}</p>
+                            <div className="detail-grid">
+                              <div><strong>Healthcare need</strong><p>{selectedPost.healthcareNeed || "Not specified"}</p></div>
+                              <div><strong>Technical need</strong><p>{selectedPost.technicalNeed || "Not specified"}</p></div>
+                              <div><strong>Confidentiality</strong><p>{confidentialityLabel(selectedPost.confidentialityLevel)}</p></div>
+                              <div><strong>Expires</strong><p>{formatDateShort(selectedPost.expiryDate)}</p></div>
+                            </div>
+                            <div className="card-actions">
+                              {selectedPost.userId === user.id && <button type="button" className="ghost-button" onClick={() => editPost(selectedPost)}>Edit</button>}
+                              {selectedPost.userId === user.id && selectedPost.status !== "partner_found" && <button type="button" className="btn-partner" onClick={() => updatePostStatus(selectedPost.id, "partner_found")}>Partner found</button>}
+                              {selectedPost.userId === user.id && selectedPost.status !== "expired" && <button type="button" className="ghost-button" onClick={() => updatePostStatus(selectedPost.id, "expired")}>Expire</button>}
+                              {selectedPost.userId === user.id && <button type="button" className="danger-button" onClick={() => deletePost(selectedPost.id)}>Delete</button>}
+                            </div>
+                            {selectedPost.userId !== user.id && selectedPost.status === "active" && (() => {
+                              const mine = interests
+                                .filter((i) => i.postId === selectedPost.id && i.requesterId === user.id)
+                                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                              const openI = mine.find((i) => i.status !== "withdrawn");
+                              const withdrawnI = mine.find((i) => i.status === "withdrawn");
+                              return (
+                                <div className="detail-interest-cta">
+                                  {openI ? (
+                                    <>
+                                      <p className="detail-interest-hint">{interestFlowHint(openI.status)}</p>
+                                      <div className="detail-interest-actions">
+                                        <button type="button" className="ghost-button" onClick={() => setActiveTab("interests")}>
+                                          Open Interests
+                                        </button>
+                                        {openI.status === "meeting_requested" ? (
+                                          <button type="button" className="ghost-button" onClick={() => setActiveTab("meetings")}>
+                                            Open Meetings
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </>
+                                  ) : withdrawnI ? (
+                                    <>
+                                      <p className="detail-interest-hint">You withdrew interest in this post. Reinstate to continue the same thread (proposed times will be cleared).</p>
+                                      <button type="button" onClick={() => reinstateInterest(withdrawnI)}>
+                                        Reinstate interest
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="detail-interest-hint">Meeting flow continues in Interests and Meetings after you express interest.</p>
+                                      <button type="button" onClick={() => setShowNdaModal(true)}>
+                                        Express interest
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </div>
-            </section>
+              </>
+            )}
           </section>
         )}
 
         {activeTab === "composer" && (
-          <section className="panel">
+          <section className="panel composer-panel">
             <div className="panel-header">
               <div>
                 <h2>{editingPostId ? "Edit post" : "Create post"}</h2>
@@ -1183,8 +1760,8 @@ function App() {
             </div>
             <div className="composer-steps">
               {studioSteps.map((step, index) => (
-                <button key={step.title} className={`step-button ${composerStep === index ? "active" : ""}`} onClick={() => setComposerStep(index)}>
-                  <span>{index + 1}</span>
+                <button type="button" key={step.title} className={`step-button ${composerStep === index ? "active" : ""}`} onClick={() => setComposerStep(index)}>
+                  <span className="step-index">{index + 1}</span>
                   <strong>{step.title}</strong>
                   <small>{step.caption}</small>
                 </button>
@@ -1216,18 +1793,38 @@ function App() {
                   <SelectField label="Confidentiality" value={postForm.confidentialityLevel} onChange={(confidentialityLevel) => setPostForm({ ...postForm, confidentialityLevel })} options={[{ value: "public", label: "Public short pitch" }, { value: "nda_required", label: "Details discussed in meeting only" }]} />
                   <Field label="Expiry date" type="date" value={postForm.expiryDate} onChange={(expiryDate) => setPostForm({ ...postForm, expiryDate })} />
                   <TextAreaField label="Additional public details" value={postForm.description} onChange={(description) => setPostForm({ ...postForm, description })} placeholder="Optional public context. Do not include patient data, files, contracts or medical advice." />
-                  <label className="checkbox">
-                    <input type="checkbox" checked={postForm.autoClose} onChange={(event) => setPostForm({ ...postForm, autoClose: event.target.checked })} />
-                    Auto-close when partner found
+                  <label className="composer-option-card">
+                    <input
+                      type="checkbox"
+                      className="composer-option-check"
+                      checked={postForm.autoClose}
+                      onChange={(event) => setPostForm({ ...postForm, autoClose: event.target.checked })}
+                    />
+                    <span className="composer-option-body">
+                      <span className="composer-option-title">Auto-close when partner found</span>
+                      <span className="composer-option-desc">Hides this post from active discovery after you mark partner found.</span>
+                    </span>
                   </label>
                 </div>
               )}
             </div>
-            <div className="form-actions">
-              <button className="ghost-button" onClick={() => setComposerStep((step) => clampStep(step - 1))} disabled={composerStep === 0}>Back</button>
-              <button className="ghost-button" onClick={() => setComposerStep((step) => clampStep(step + 1))} disabled={composerStep === studioSteps.length - 1}>Next</button>
-              <button className="ghost-button" onClick={() => savePost("draft")} disabled={loading}>Save draft</button>
-              <button onClick={() => savePost("active")} disabled={loading}>Publish</button>
+            <div className="form-actions composer-footer-actions">
+              <div className="composer-footer-nav" role="group" aria-label="Step navigation">
+                <button type="button" className="composer-nav-btn" onClick={() => setComposerStep((step) => clampStep(step - 1))} disabled={composerStep === 0}>
+                  Back
+                </button>
+                <button type="button" className="composer-nav-btn" onClick={() => setComposerStep((step) => clampStep(step + 1))} disabled={composerStep === studioSteps.length - 1}>
+                  Next
+                </button>
+              </div>
+              <div className="composer-footer-save" role="group" aria-label="Save and publish">
+                <button type="button" className="composer-draft-btn" onClick={() => savePost("draft")} disabled={loading}>
+                  Save draft
+                </button>
+                <button type="button" className="composer-publish-btn" onClick={() => savePost("active")} disabled={loading}>
+                  Publish
+                </button>
+              </div>
             </div>
           </section>
         )}
@@ -1270,12 +1867,11 @@ function App() {
                     )}
                     {ownerView && (interest.status === "pending" || interest.status === "acknowledged") && (
                       <div className="meeting-form">
-                        <TextAreaField
-                          label="Propose time slots"
-                          value={interestSlotDrafts[interest.id] || "2026-04-24T10:00\n2026-04-24T13:00"}
-                          onChange={(value) => setInterestSlotDrafts((current) => ({ ...current, [interest.id]: value }))}
+                        <InterestSlotPlanner
+                          key={`${interest.id}-${interest.timeSlots?.length ?? 0}-${interest.status}`}
+                          disabled={loading}
+                          onSubmit={(proposedSlots) => proposeInterestSlots(interest, proposedSlots)}
                         />
-                        <button onClick={() => proposeInterestSlots(interest)}>Propose slots</button>
                       </div>
                     )}
                     {requesterView && interest.status === "acknowledged" && hasSlots && (
@@ -1299,12 +1895,21 @@ function App() {
                           />
                           I accept the NDA and first-contact terms before detailed discussion.
                         </label>
-                        <button onClick={() => requestMeetingFromInterest(interest)}>Send meeting request</button>
+                        <button
+                          type="button"
+                          disabled={!meetingDraftForInterest.ndaAccepted}
+                          onClick={() => requestMeetingFromInterest(interest)}
+                        >
+                          Send meeting request
+                        </button>
                       </div>
                     )}
                     <div className="card-actions">
+                      {requesterView && interest.status === "withdrawn" && (
+                        <button type="button" onClick={() => reinstateInterest(interest)}>Reinstate interest</button>
+                      )}
                       {requesterView && interest.status !== "withdrawn" && interest.status !== "meeting_requested" && (
-                        <button className="ghost-button" onClick={() => withdrawInterest(interest)}>Withdraw</button>
+                        <button type="button" className="ghost-button" onClick={() => withdrawInterest(interest)}>Withdraw</button>
                       )}
                     </div>
                   </article>
@@ -1320,7 +1925,7 @@ function App() {
             <div className="panel-header">
               <div>
                 <h2>Meetings</h2>
-                <p>Accept selected slots, decline unsuitable requests or confirm a slot when more than one option is still open.</p>
+                <p>Accept selected slots, decline unsuitable requests or confirm a slot when more than one option is still open. After scheduling, either side can paste a Zoom / Teams / Meet link so both can join.</p>
               </div>
             </div>
             <div className="card-grid">
@@ -1328,7 +1933,10 @@ function App() {
                 <article className="meeting-card" key={meeting.id}>
                   <div className="card-topline">
                     <span>{meeting.post?.workingDomain}</span>
-                    <StatusBadge status={meeting.status} />
+                    <div className="card-topline-badges">
+                      <StatusBadge status={meeting.status} />
+                      {isMeetingSlotMissed(meeting) ? <span className="status-badge status-missed-meeting">Missed meeting</span> : null}
+                    </div>
                   </div>
                   <h3>{meeting.post?.title}</h3>
                   <p>{meeting.message || "No message provided."}</p>
@@ -1344,7 +1952,45 @@ function App() {
                       </div>
                     ))}
                   </div>
-                  {meeting.selectedSlot && <p>Selected slot: {formatDate(meeting.selectedSlot)}</p>}
+                  {meeting.selectedSlot && (
+                    <div className="meeting-slot-block">
+                      <p className="meeting-selected-slot">Selected slot: {formatDate(meeting.selectedSlot)}</p>
+                      {isMeetingSlotMissed(meeting) ? (
+                        <p className="meeting-missed-note">This meeting window has passed. Reschedule by agreeing on a new time outside the app or start a new interest flow if the post is still open.</p>
+                      ) : null}
+                    </div>
+                  )}
+                  {(meeting.status === "pending" || meeting.status === "accepted" || meeting.status === "scheduled") && (
+                    <div className="meeting-join-section">
+                      {meeting.joinUrl ? (
+                        <a className="meeting-join-open" href={meeting.joinUrl} target="_blank" rel="noopener noreferrer">
+                          Join video meeting
+                        </a>
+                      ) : (
+                        <p className="meeting-join-placeholder">No video link yet — add a Zoom, Microsoft Teams, or Google Meet URL below.</p>
+                      )}
+                      {(meeting.ownerId === user.id || meeting.requesterId === user.id) && (
+                        <div className="meeting-join-form">
+                          <Field
+                            label="Video meeting URL"
+                            placeholder="https://zoom.us/j/…"
+                            value={meetingJoinDrafts[meeting.id] !== undefined ? meetingJoinDrafts[meeting.id] : meeting.joinUrl || ""}
+                            onChange={(value) => setMeetingJoinDrafts((current) => ({ ...current, [meeting.id]: value }))}
+                          />
+                          <div className="meeting-join-actions">
+                            <button type="button" disabled={loading} onClick={() => saveMeetingJoinUrl(meeting)}>
+                              Save link
+                            </button>
+                            {meeting.joinUrl ? (
+                              <button type="button" className="ghost-button" disabled={loading} onClick={() => clearMeetingJoinUrl(meeting)}>
+                                Remove link
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="card-actions">
                     {meeting.ownerId === user.id && meeting.status === "pending" && <button onClick={() => meetingAction(meeting, "accept")}>{meeting.selectedSlot ? "Accept and schedule" : "Accept"}</button>}
                     {meeting.ownerId === user.id && meeting.status === "pending" && <button className="ghost-button" onClick={() => meetingAction(meeting, "decline")}>Decline</button>}
@@ -1416,58 +2062,134 @@ function App() {
         )}
 
         {activeTab === "admin" && user.role === "admin" && (
-          <section className="stack">
+          <section className="stack admin-console">
             <div className="metrics-row">
               <StatCard label="Total Projects" value={adminOverview?.activePosts || 0} hint="📁 Live and managed posts" />
               <StatCard label="Verified Experts" value={adminUsers.filter((item) => item.verified).length} hint="✅ Trusted specialist accounts" />
               <StatCard label="Active Meetings" value={meetings.filter((item) => item.status === "scheduled" || item.status === "accepted").length} hint="📅 In-progress collaboration flow" />
               <StatCard label="Security Logs" value={adminOverview?.logsCount || 0} hint="🛡️ Auditable security events" />
             </div>
-            <section className="dashboard-grid">
-              <article className="panel">
-                <h2>Activity Trends</h2>
-                <div className="chart-box">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="line-chart">
-                    <polyline
-                      fill="none"
-                      stroke="#3e7cb1"
-                      strokeWidth="2.4"
-                      points={chartSeries([
-                        adminOverview?.failedLogins24h || 0,
-                        adminOverview?.pendingMeetings || 0,
-                        adminOverview?.activePosts || 0,
-                        adminUsers.length,
-                        adminOverview?.logsCount || 0,
-                      ])}
-                    />
-                  </svg>
-                </div>
-              </article>
-              <article className="panel">
-                <h2>Domain Distribution</h2>
-                <div className="donut-wrap">
-                  <div
-                    className="donut-chart"
-                    style={{
-                      background: `conic-gradient(#3e7cb1 0deg ${Math.max((domainDistribution[0]?.[1] || 1) * 36, 36)}deg, #81a4cd ${Math.max((domainDistribution[0]?.[1] || 1) * 36, 36)}deg 360deg)`,
-                    }}
-                  />
-                  <div className="donut-legend">
-                    {(domainDistribution.length ? domainDistribution : [["General", 1]]).map(([domain, count]) => (
-                      <p key={domain}>{domain}: {count}</p>
-                    ))}
+            <section className="dashboard-grid admin-dashboard-grid">
+              <article className="panel admin-chart-panel">
+                <div className="panel-header admin-panel-head">
+                  <div>
+                    <h2>Activity trends</h2>
+                    <p>Line chart of five counts on one linear scale (max = tallest point).</p>
                   </div>
                 </div>
+                {(() => {
+                  const trendLabels = ["Logins 24h", "Pending mtgs", "Posts", "Users", "Logs"];
+                  const trendValues = [
+                    adminOverview?.failedLogins24h || 0,
+                    adminOverview?.pendingMeetings || 0,
+                    adminOverview?.activePosts || 0,
+                    adminUsers.length,
+                    adminOverview?.logsCount || 0,
+                  ];
+                  const t = adminTrendChartModel(trendValues, trendLabels);
+                  const gidArea = `${adminTrendChartId}-trend-area`;
+                  const gidLine = `${adminTrendChartId}-trend-line`;
+                  const vb = `0 0 ${t.vbW} ${t.vbH}`;
+                  return (
+                    <div className="chart-box admin-trend-chart">
+                      <svg viewBox={vb} className="admin-trend-svg" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Admin activity trend">
+                        <defs>
+                          <linearGradient id={gidArea} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.26" />
+                            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.04" />
+                          </linearGradient>
+                          <linearGradient id={gidLine} x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#1d4ed8" />
+                            <stop offset="100%" stopColor="#0891b2" />
+                          </linearGradient>
+                        </defs>
+                        {t.gridYs.map((gy, i) => (
+                          <line
+                            key={i}
+                            x1={t.padL}
+                            x2={t.vbW - t.padR}
+                            y1={gy}
+                            y2={gy}
+                            className="admin-trend-gridline"
+                          />
+                        ))}
+                        <path d={t.areaD} fill={`url(#${gidArea})`} />
+                        <polyline
+                          fill="none"
+                          stroke={`url(#${gidLine})`}
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={t.linePoints}
+                        />
+                        {t.pts.map((p, i) => (
+                          <g key={i}>
+                            <title>{`${trendLabels[i]}: ${p.v}`}</title>
+                            <circle cx={p.x} cy={p.y} r="3.4" className="admin-trend-dot-ring" />
+                            <circle cx={p.x} cy={p.y} r="2" fill="#ffffff" stroke="#1d4ed8" strokeWidth="0.9" />
+                          </g>
+                        ))}
+                        {t.pts.map((p, i) => (
+                          <text
+                            key={`lbl-${i}`}
+                            x={p.x}
+                            y={t.vbH - 4}
+                            textAnchor="middle"
+                            className="admin-trend-tick"
+                          >
+                            {trendLabels[i]?.split(" ")[0] ?? ""}
+                          </text>
+                        ))}
+                      </svg>
+                    </div>
+                  );
+                })()}
+              </article>
+              <article className="panel admin-chart-panel">
+                <div className="panel-header admin-panel-head">
+                  <div>
+                    <h2>Domain mix</h2>
+                    <p>Share of posts by working domain (top five).</p>
+                  </div>
+                </div>
+                {(() => {
+                  const donut = domainDonutModel(domainDistribution);
+                  return (
+                    <div className="donut-wrap admin-donut-wrap">
+                      <div className="admin-donut-side">
+                        <div
+                          className="donut-chart admin-donut-ring"
+                          style={{ background: donut.gradient }}
+                          role="img"
+                          aria-label="Domain distribution"
+                        />
+                        <p className="admin-donut-total">
+                          <strong>{donut.total}</strong>
+                          <span>posts</span>
+                        </p>
+                      </div>
+                      <ul className="admin-donut-legend">
+                        {donut.segments.map((s) => (
+                          <li key={s.domain}>
+                            <span className="admin-donut-swatch" style={{ background: s.color }} aria-hidden />
+                            <span className="admin-donut-name" title={s.domain}>{s.domain}</span>
+                            <span className="admin-donut-meta">{s.count} · {s.pct}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </article>
             </section>
-            <section className="panel">
-              <div className="panel-header">
+            <section className="panel admin-data-panel">
+              <div className="panel-header admin-panel-head">
                 <div>
                   <h2>Users</h2>
-                  <p>Moderate verification and suspension.</p>
+                  <p>Verify institutional accounts and suspend if needed.</p>
                 </div>
               </div>
-              <div className="table-wrap users-table-wrap">
+              <div className="table-wrap users-table-wrap admin-table-wrap">
                 <table>
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>City</th><th>State</th><th>Actions</th></tr></thead>
                   <tbody>
@@ -1488,44 +2210,53 @@ function App() {
                 </table>
               </div>
             </section>
-            <section className="panel">
-              <div className="panel-header">
+            <section className="panel admin-data-panel">
+              <div className="panel-header admin-panel-head">
                 <div>
                   <h2>Posts</h2>
-                  <p>Moderate lifecycle and remove inappropriate posts.</p>
+                  <p>Lifecycle, scores, and moderation actions.</p>
                 </div>
               </div>
-              <div className="table-wrap">
+              <div className="table-wrap admin-table-wrap">
                 <table>
                   <thead><tr><th>Title</th><th>Status</th><th>Owner</th><th>City</th><th>Match Score</th><th>Actions</th></tr></thead>
                   <tbody>
-                    {adminPosts.map((post) => (
-                      <tr key={post.id}>
-                        <td>{post.title}</td>
-                        <td><StatusBadge status={post.status} /></td>
-                        <td>{post.owner?.fullName}</td>
-                        <td>{post.city}</td>
-                        <td><span className="score-badge">{calculateMatchScore(post, user)}</span></td>
-                        <td>
-                          <button className="ghost-button" onClick={() => adminPostStatus(post.id, "active")}>Activate</button>
-                          <button className="ghost-button" onClick={() => adminPostStatus(post.id, "expired")}>Expire</button>
-                          <button className="danger-button" onClick={() => removePostAsAdmin(post.id)}>Remove</button>
-                        </td>
-                      </tr>
-                    ))}
+                    {adminPosts.map((post) => {
+                      const adminMatch = computeMatchInsight(post, user);
+                      return (
+                        <tr key={post.id}>
+                          <td>{post.title}</td>
+                          <td><StatusBadge status={post.status} /></td>
+                          <td>{post.owner?.fullName}</td>
+                          <td>{post.city}</td>
+                          <td className="admin-match-score-cell">
+                            <span className="score-badge" title={adminMatch.lines.join("\n")}>
+                              {adminMatch.score}
+                            </span>
+                          </td>
+                          <td>
+                            <button className="ghost-button" onClick={() => adminPostStatus(post.id, "active")}>Activate</button>
+                            <button className="ghost-button" onClick={() => adminPostStatus(post.id, "expired")}>Expire</button>
+                            <button className="danger-button" onClick={() => removePostAsAdmin(post.id)}>Remove</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </section>
-            <section className="panel">
-              <div className="panel-header">
+            <section className="panel admin-data-panel">
+              <div className="panel-header admin-panel-head">
                 <div>
                   <h2>Activity logs</h2>
-                  <p>Exportable audit trail for the project scope.</p>
+                  <p>Audit trail — export for reporting.</p>
                 </div>
-                <button onClick={exportLogs}>Export CSV</button>
+                <button type="button" className="ghost-button admin-export-btn" onClick={exportLogs}>
+                  Export CSV
+                </button>
               </div>
-              <div className="table-wrap admin-log-wrap">
+              <div className="table-wrap admin-log-wrap admin-table-wrap">
                 <table>
                   <thead><tr><th>Time</th><th>Role</th><th>Action</th><th>Target</th><th>Result</th></tr></thead>
                   <tbody>
@@ -1543,41 +2274,102 @@ function App() {
               </div>
             </section>
             {adminAnomalies && (
-              <section className="panel">
-                <div className="panel-header">
+              <section className="panel admin-data-panel">
+                <div className="panel-header admin-panel-head">
                   <div>
                     <h2>Security anomalies</h2>
-                    <p>Failed login and security-event signals from the last 24 hours.</p>
+                    <p>Last 24h — failed logins and related signals.</p>
                   </div>
                 </div>
-                <div className="detail-grid">
-                  <div>
-                    <strong>Failed login IPs</strong>
-                    <p>{adminAnomalies.failedLoginByIp.length ? adminAnomalies.failedLoginByIp.map((item) => `${item.ipAddress}: ${item.count} (${item.risk})`).join(", ") : "No suspicious IP activity."}</p>
+                <div className="admin-anomaly-grid">
+                  <div className="admin-anomaly-card">
+                    <h3 className="admin-anomaly-title">Failed login IPs</h3>
+                    {adminAnomalies.failedLoginByIp.length ? (
+                      <ul className="admin-anomaly-list">
+                        {adminAnomalies.failedLoginByIp.map((item) => (
+                          <li key={item.ipAddress}>
+                            <span className="admin-anomaly-meta">{item.ipAddress}</span>
+                            <span className={`admin-risk-pill admin-risk-pill--${String(item.risk || "low").toLowerCase()}`}>{item.count} · {item.risk}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="admin-anomaly-empty">No suspicious IP activity.</p>
+                    )}
                   </div>
-                  <div>
-                    <strong>Failed login users</strong>
-                    <p>{adminAnomalies.failedLoginByUser.length ? adminAnomalies.failedLoginByUser.map((item) => `${item.userId}: ${item.count} (${item.risk})`).join(", ") : "No repeated user failures."}</p>
+                  <div className="admin-anomaly-card">
+                    <h3 className="admin-anomaly-title">Failed login users</h3>
+                    {adminAnomalies.failedLoginByUser.length ? (
+                      <ul className="admin-anomaly-list">
+                        {adminAnomalies.failedLoginByUser.map((item) => (
+                          <li key={item.userId}>
+                            <span className="admin-anomaly-meta" title={item.userId}>
+                              {(item.userId || "").length > 10 ? `${(item.userId || "").slice(0, 8)}…` : item.userId || "—"}
+                            </span>
+                            <span className={`admin-risk-pill admin-risk-pill--${String(item.risk || "low").toLowerCase()}`}>{item.count} · {item.risk}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="admin-anomaly-empty">No repeated user failures.</p>
+                    )}
                   </div>
-                  <div>
-                    <strong>Security events</strong>
-                    <p>{adminAnomalies.recentSecurityEvents.length ? `${adminAnomalies.recentSecurityEvents.length} recent events` : "No recent security events."}</p>
+                  <div className="admin-anomaly-card">
+                    <h3 className="admin-anomaly-title">Security events</h3>
+                    <p className="admin-anomaly-summary">
+                      {adminAnomalies.recentSecurityEvents.length
+                        ? `${adminAnomalies.recentSecurityEvents.length} recent events`
+                        : "No recent security events."}
+                    </p>
                   </div>
-                  <div>
-                    <strong>Window</strong>
-                    <p>{adminAnomalies.window}</p>
+                  <div className="admin-anomaly-card">
+                    <h3 className="admin-anomaly-title">Window</h3>
+                    <p className="admin-anomaly-summary">{adminAnomalies.window}</p>
                   </div>
                 </div>
               </section>
             )}
             {adminStats && (
-              <section className="panel">
-                <h2>Statistics</h2>
-                <div className="detail-grid">
-                  <div><strong>Roles</strong><p>{adminStats.usersByRole.map((item) => `${item.role}: ${item._count.role}`).join(", ")}</p></div>
-                  <div><strong>Post states</strong><p>{adminStats.postsByStatus.map((item) => `${item.status}: ${item._count.status}`).join(", ")}</p></div>
-                  <div><strong>Meeting states</strong><p>{adminStats.meetingsByStatus.map((item) => `${item.status}: ${item._count.status}`).join(", ")}</p></div>
-                  <div><strong>Cities</strong><p>{adminStats.postsByCity.map((item) => `${item.city}: ${item.count}`).join(", ")}</p></div>
+              <section className="panel admin-data-panel">
+                <div className="panel-header admin-panel-head">
+                  <div>
+                    <h2>Statistics</h2>
+                    <p>Counts across users, posts, meetings, and cities.</p>
+                  </div>
+                </div>
+                <div className="admin-stat-grid">
+                  <div className="admin-stat-block">
+                    <h3 className="admin-stat-label">Roles</h3>
+                    <ul className="admin-stat-chips">
+                      {adminStats.usersByRole.map((item) => (
+                        <li key={item.role}><span className="admin-stat-chip">{item.role}</span> {item._count.role}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="admin-stat-block">
+                    <h3 className="admin-stat-label">Post states</h3>
+                    <ul className="admin-stat-chips">
+                      {adminStats.postsByStatus.map((item) => (
+                        <li key={item.status}><span className="admin-stat-chip">{item.status}</span> {item._count.status}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="admin-stat-block">
+                    <h3 className="admin-stat-label">Meeting states</h3>
+                    <ul className="admin-stat-chips">
+                      {adminStats.meetingsByStatus.map((item) => (
+                        <li key={item.status}><span className="admin-stat-chip">{item.status}</span> {item._count.status}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="admin-stat-block">
+                    <h3 className="admin-stat-label">Cities</h3>
+                    <ul className="admin-stat-chips">
+                      {adminStats.postsByCity.map((item, idx) => (
+                        <li key={`${item.city}-${idx}`}><span className="admin-stat-chip">{item.city}</span> {item.count}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </section>
             )}
@@ -1585,22 +2377,85 @@ function App() {
         )}
 
         {showNdaModal && (
-          <div className="modal-backdrop" role="presentation">
-            <div className="nda-modal">
-              <h2>NDA Confirmation</h2>
-              <p>You must accept confidentiality terms before sending interest for this project.</p>
-              <label className="checkbox">
-                <input type="checkbox" checked={ndaAcceptedForInterest} onChange={(event) => setNdaAcceptedForInterest(event.target.checked)} />
-                I confirm that I will keep all shared details confidential under NDA.
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setShowNdaModal(false);
+                setNdaAcceptedForInterest(false);
+              }
+            }}
+          >
+            <div
+              className="nda-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="nda-modal-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="nda-modal-header">
+                <span className="nda-modal-icon" aria-hidden>🔒</span>
+                <h2 id="nda-modal-title">Express interest</h2>
+              </div>
+              <div className="nda-modal-rule" />
+              <p className="nda-modal-lead">Add a short first-contact note. The post owner will respond in Interests with proposed times before you request a meeting.</p>
+              <div className="nda-modal-field">
+                <TextAreaField label="Short message" value={interestDraft.message} onChange={(messageValue) => setInterestDraft({ message: messageValue })} />
+              </div>
+              <p className="nda-modal-lead nda-modal-lead--compact">
+                By sending this request you agree not to share any ideas discussed without written consent.
+              </p>
+              <p className="nda-modal-meta">
+                <span>NDA Version: 1.0</span>
+                <span className="nda-meta-sep" aria-hidden>|</span>
+                <span>Date: {new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
+              </p>
+              <label className="nda-modal-checkbox">
+                <input
+                  type="checkbox"
+                  checked={ndaAcceptedForInterest}
+                  onChange={(event) => setNdaAcceptedForInterest(event.target.checked)}
+                />
+                <span>I have read and accept the NDA</span>
               </label>
-              <div className="form-actions">
-                <button className="ghost-button" onClick={() => { setShowNdaModal(false); setNdaAcceptedForInterest(false); }}>Cancel</button>
-                <button onClick={expressInterest} disabled={!ndaAcceptedForInterest}>Proceed</button>
+              <div className="nda-modal-actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => {
+                    setShowNdaModal(false);
+                    setNdaAcceptedForInterest(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="nda-modal-accept"
+                  onClick={expressInterest}
+                  disabled={!ndaAcceptedForInterest || !String(interestDraft.message || "").trim()}
+                >
+                  Accept &amp; Send
+                </button>
               </div>
             </div>
           </div>
         )}
       </section>
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          duration: 3200,
+          style: {
+            maxWidth: "560px",
+            background: "rgba(9, 52, 89, 0.94)",
+            color: "#ffffff",
+            border: "1px solid rgba(255, 255, 255, 0.26)",
+            borderRadius: "12px",
+          },
+        }}
+      />
     </main>
   );
 }

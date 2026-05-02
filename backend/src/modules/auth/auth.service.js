@@ -9,7 +9,6 @@ const { resolveLocation, withLocation } = require("../../shared/utils/location")
 const {
   ConflictError,
   AuthError,
-  NotFoundError,
   ForbiddenError,
   ValidationError,
 } = require("../../shared/utils/errors");
@@ -76,9 +75,20 @@ const authService = {
   },
 
   async verifyEmail({ token, ipAddress }) {
-    if (!token) throw new ValidationError("Verification token is required.");
-    const user = await authRepository.findByVerificationToken(token);
-    if (!user) throw new NotFoundError("User");
+    let normalized = String(token || "").trim();
+    try {
+      normalized = decodeURIComponent(normalized);
+    } catch {
+      /* keep trimmed string */
+    }
+    normalized = normalized.replace(/\s+/g, "");
+    if (!normalized) throw new ValidationError("Verification token is required.");
+    const user = await authRepository.findByVerificationToken(normalized);
+    if (!user) {
+      throw new ValidationError(
+        "This verification link or token is invalid, already used, or no longer in our database (for example after a DB reset or if you clicked an old email after using Resend). Register again or request a new token with Resend.",
+      );
+    }
     if (user.verified) return sanitize(user);
     if (user.emailVerificationExpiresAt && user.emailVerificationExpiresAt < new Date()) {
       throw new ForbiddenError("Verification token has expired.");
@@ -106,7 +116,9 @@ const authService = {
 
   async resendVerification({ email, ipAddress }) {
     const user = await authRepository.findByEmail(email);
-    if (!user) throw new NotFoundError("User");
+    if (!user) {
+      throw new ValidationError("No account found for this email. Check the spelling or register first.");
+    }
     if (user.verified) return { user: sanitize(user) };
     const verificationToken = createVerificationToken();
     const verificationExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);

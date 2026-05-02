@@ -94,6 +94,12 @@ const interestsService = {
     if (post.owner.role === user.role) {
       throw new ValidationError("Interest must come from the complementary role.");
     }
+    const latestForPost = await interestsRepository.findLatestForPostAndRequester(post.id, user.id);
+    if (latestForPost?.status === "withdrawn") {
+      throw new ConflictError(
+        "You withdrew interest in this post. Reinstate that interest from the Interests tab instead of creating a new one."
+      );
+    }
     const existing = await interestsRepository.findOpenByPostAndRequester(post.id, user.id);
     if (existing) {
       throw new ConflictError("You already have an open interest for this post.");
@@ -143,6 +149,29 @@ const interestsService = {
       actionType: "interest_update",
       targetEntity: id,
       details: "Interest acknowledged with proposed time slots",
+    });
+    return updated;
+  },
+
+  async reinstateWithdrawn(user, id) {
+    const interest = await this.getById(user, id);
+    ensureRequester(interest, user);
+    if (interest.status !== "withdrawn") {
+      throw new ValidationError("Only a withdrawn interest can be reinstated.");
+    }
+    await interestsRepository.deleteTimeSlotsForInterest(id);
+    const updated = await interestsRepository.update(id, { status: "pending" });
+    await interestsRepository.createNotification({
+      userId: interest.ownerId,
+      type: "interest_update",
+      message: `${user.fullName} reinstated interest in "${interest.post.title}".`,
+    });
+    await interestsRepository.createActivityLog({
+      userId: user.id,
+      role: user.role,
+      actionType: "interest_update",
+      targetEntity: id,
+      details: "Interest reinstated from withdrawn",
     });
     return updated;
   },
