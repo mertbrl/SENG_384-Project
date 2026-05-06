@@ -1,7 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+
+/* ═══ Design Tokens ═══════════════════════════════════════════ */
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  --color-accent: #f17300;
+  --color-accent-hover: #dc6500;
+  --color-blue: #054a91;
+  --color-text: #0a1628;
+  --color-text-muted: #45627c;
+  --color-text-faint: #64748b;
+  --color-border: #e8edf4;
+  --color-surface: #ffffff;
+  --color-bg: #f0f4f9;
+
+  --shadow-sm: 0 1px 4px rgba(5, 74, 145, 0.07);
+  --shadow-md: 0 4px 16px rgba(5, 74, 145, 0.1);
+  --shadow-lg: 0 10px 32px rgba(5, 74, 145, 0.13);
+  --shadow-xl: 0 20px 56px rgba(5, 74, 145, 0.17);
+
+  --t: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-bounce: 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ═══ Keyframes ════════════════════════════════════════════════ */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ═══ Global font + box-sizing ═════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Enhanced buttons ──────────────────────────────────────── */
+button,
+.ghost-button,
+.danger-button {
+  transition: transform var(--t), box-shadow var(--t), background var(--t), opacity var(--t);
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(241, 115, 0, 0.36);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(241, 115, 0, 0.18);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ghost-button:hover:not(:disabled) {
+  background: #dde9f7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(5, 74, 145, 0.1);
+}
+
+.danger-button {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+/* ─── Input focus states ────────────────────────────────────── */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+/* ─── Panel / card entrance animation ──────────────────────── */
+.panel,
+.meeting-card,
+.notification-item,
+.interest-card,
+.meeting-card-v2 {
+  animation: fadeSlideIn 0.25s var(--t) both;
+}
+
+/* ─── App background ────────────────────────────────────────── */
+.app-shell,
+.auth-shell {
+  background: var(--color-bg);
+}
+
 .auth-shell,
 .app-shell {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--color-bg);
 }
 
 .auth-shell {
@@ -102,14 +212,17 @@ button,
 .ghost-button,
 .danger-button {
   border: 0;
-  border-radius: 999px;
-  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  padding: 0.65rem 1.1rem;
   font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
+  letter-spacing: 0.01em;
 }
 
 button {
-  background: #f17300;
+  background: #4f46e5;
   color: #ffffff;
 }
 
@@ -120,7 +233,7 @@ button {
 
 .auth-tabs button.active,
 .sidebar-nav .active {
-  background: #f17300;
+  background: #4f46e5;
   color: #ffffff;
 }
 
@@ -503,7 +616,7 @@ textarea {
   z-index: 40;
   background: rgba(10, 22, 40, 0.45);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: 1.25rem 1rem 2rem;
   overflow-y: auto;
@@ -511,7 +624,7 @@ textarea {
 
 .post-detail-modal {
   width: min(960px, 100%);
-  margin: 0.35rem 0 auto;
+  margin: auto;
   max-height: min(calc(100vh - 2.5rem), 900px);
   display: flex;
   flex-direction: column;
@@ -865,14 +978,15 @@ textarea {
 }
 
 .step-button.active {
-  background: #fff4eb;
-  border-color: #f17300;
-  box-shadow: 0 2px 10px rgba(241, 115, 0, 0.15);
+  background: #eef2ff;
+  border-color: #6366f1;
+  border-left: 3px solid #6366f1;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1);
 }
 
 .step-button.active .step-index {
-  background: #f17300;
-  border-color: #f17300;
+  background: #6366f1;
+  border-color: #6366f1;
   color: #ffffff;
 }
 
@@ -890,6 +1004,7 @@ textarea {
   padding: 0.95rem 1.05rem;
   border-radius: 0.85rem;
   border: 1px solid #e2e8f0;
+  background: #f8fafc;
   background: linear-gradient(165deg, #f8fafc 0%, #ffffff 55%);
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
@@ -2219,50 +2334,116 @@ a.text-link {
 .dash-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.15rem 0.35rem 0.5rem;
+  gap: 0.6rem;
+  padding: 0.1rem 0.25rem 0.45rem;
 }
 
+.dash-dark-toggle {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: auto;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 0.45rem;
+}
+
+.dash-dark-toggle:hover {
+  background: rgba(255,255,255,0.22);
+}
+
+
+
 .dash-brand-mark {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: linear-gradient(145deg, #f97316, #ea580c);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #1a2744, #0f1e38);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(234, 88, 12, 0.28);
+  position: relative;
+  overflow: visible;
+  cursor: default;
+  animation: brand-glow-pulse 4s ease-in-out infinite;
 }
+
+@keyframes brand-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0px rgba(99,149,255,0.0), 0 2px 10px rgba(15,30,56,0.4); }
+  40%       { box-shadow: 0 0 0 6px rgba(99,149,255,0.08), 0 4px 16px rgba(99,149,255,0.2); }
+  60%       { box-shadow: 0 0 0 3px rgba(99,149,255,0.05), 0 3px 12px rgba(99,149,255,0.12); }
+}
+
+/* Animated outer pulse ring */
+.dash-brand-mark::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(99,149,255,0.18);
+  animation: brand-ring-pulse 4s ease-in-out infinite;
+}
+
+/* Second, slower ring */
+.dash-brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 20px;
+  border: 1px solid rgba(99,149,255,0.07);
+  animation: brand-ring-pulse 4s ease-in-out infinite 2s;
+}
+
+@keyframes brand-ring-pulse {
+  0%, 100% { opacity: 0; transform: scale(0.95); }
+  50%       { opacity: 1; transform: scale(1); }
+}
+
+/* Icon inside — subtle draw animation that replays */
+.dash-brand-mark svg {
+  opacity: 0.92;
+  filter: drop-shadow(0 0 4px rgba(99,179,255,0.5));
+  animation: brand-icon-breathe 4s ease-in-out infinite;
+}
+
+@keyframes brand-icon-breathe {
+  0%, 100% { opacity: 0.75; transform: scale(0.95); }
+  50%       { opacity: 1; transform: scale(1); }
+}
+
 
 .dash-brand-title {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #0f172a;
+  letter-spacing: 0.1em;
+  color: #1e293b;
 }
 
 .dash-brand-sub {
-  margin: 0.1rem 0 0;
-  font-size: 0.72rem;
-  font-weight: 600;
+  margin: 0.05rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 500;
   color: #64748b;
+  letter-spacing: 0.02em;
 }
 
 .dash-sidebar-nav {
   flex-direction: column;
   align-items: stretch;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .nav-group-label {
-  margin: 0.65rem 0 0.35rem;
+  margin: 0.75rem 0 0.3rem;
   padding: 0 0.5rem;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: rgba(255,255,255,0.35);
 }
 
 .dash-sidebar-nav > button {
@@ -2271,35 +2452,39 @@ a.text-link {
   justify-content: space-between;
   width: 100%;
   text-align: left;
-  border-radius: 12px;
-  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
   background: transparent;
-  color: #334155;
-  font-weight: 600;
-  font-size: 0.88rem;
-  border: 1px solid transparent;
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: none;
+  border-left: 3px solid transparent;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .dash-sidebar-nav > button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+  border-left-color: rgba(255,255,255,0.15);
 }
 
 .dash-sidebar-nav > button.active {
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border-left-color: #f17300;
+  font-weight: 600;
 }
 
 .nav-badge {
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.4rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  background: #e0ecff;
-  color: #1d4ed8;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2326,11 +2511,11 @@ a.text-link {
   gap: 0.55rem 0.95rem;
   flex-shrink: 0;
   margin: 0 -1.5rem;
-  padding: 0.38rem 1.35rem;
-  min-height: 0;
-  border-bottom: 1px solid #c7d9ee;
-  background: linear-gradient(100deg, #e8f2fc 0%, #f3f8ff 38%, #f8fafc 100%);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  padding: 0.7rem 1.5rem;
+  min-height: 60px;
+  border-bottom: 1px solid #d4e3f5;
+  background: linear-gradient(105deg, #e4effc 0%, #f0f7ff 40%, #f8fafc 100%);
+  backdrop-filter: blur(6px);
 }
 
 .dash-content-user-main {
@@ -2349,12 +2534,13 @@ a.text-link {
 }
 
 .dash-user-avatar--content {
-  width: 36px;
-  height: 36px;
-  font-size: 0.74rem;
+  width: 42px;
+  height: 42px;
+  font-size: 0.82rem;
+  font-weight: 800;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 1px 7px rgba(37, 99, 235, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.28);
+  border: 2px solid rgba(255, 255, 255, 0.92);
 }
 
 .dash-content-user-text {
@@ -2374,7 +2560,9 @@ a.text-link {
 
 .dash-content-user-name {
   font-weight: 800;
+  font-size: 0.95rem;
   color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
 .dash-content-user-meta-sep {
@@ -2747,4 +2935,1939 @@ a.text-link {
   background: #ffffff;
   border: 1px solid #e8edf4;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BROWSE POSTS — My Posts / Community Posts Sections
+   ════════════════════════════════════════════════════════════════ */
+
+.browse-board-grid.card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  gap: 1rem;
+}
+
+.posts-section { margin-top: 1.5rem; }
+.posts-section + .posts-section { margin-top: 2.25rem; }
+
+.posts-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid transparent;
+}
+.posts-section--mine .posts-section-header     { border-color: #fbbf24; }
+.posts-section--community .posts-section-header { border-color: #bfdbfe; }
+
+.posts-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem; height: 2.1rem;
+  border-radius: 0.6rem;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+.posts-section--mine      .posts-section-icon { background: #fef9c3; }
+.posts-section--community .posts-section-icon { background: #dbeafe; }
+
+.posts-section-title {
+  margin: 0;
+  font-size: 0.97rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+.posts-section-sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Post cards */
+.post-card--browse {
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+  animation: fadeSlideIn 0.22s ease both;
+}
+.post-card--browse:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(5,74,145,0.13); }
+
+.post-card--own {
+  border-color: #fde68a;
+  background: linear-gradient(155deg, #fffef0 0%, #fff8e1 100%);
+  box-shadow: 0 2px 12px rgba(245,158,11,0.1);
+}
+.post-card--own:hover   { border-color: #f59e0b; box-shadow: 0 10px 28px rgba(245,158,11,0.2); }
+.post-card--own.selected { border-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,0.28), 0 8px 20px rgba(217,119,6,0.14); }
+
+.post-card--community { border-color: #e2eaf5; background: #ffffff; box-shadow: 0 1px 6px rgba(5,74,145,0.06); }
+.post-card--community.city-match { border-color: #6ee7b7; background: linear-gradient(155deg,#f0fdf9 0%,#ffffff 100%); }
+.post-card--community.selected { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2), 0 8px 22px rgba(5,74,145,0.12); }
+
+.card-domain-tag {
+  font-size: 0.67rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.09em; color: #475569;
+  background: #f1f5f9; border-radius: 999px; padding: 0.2rem 0.55rem;
+}
+.post-card--own .card-domain-tag { background: #fef3c7; color: #92400e; }
+
+.post-card-title {
+  margin: 0; font-size: 0.97rem; font-weight: 700; color: #0f172a; line-height: 1.35;
+}
+.post-card-excerpt {
+  margin: 0; font-size: 0.82rem; line-height: 1.5; color: #45627c; flex: 1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.post-card-owner-row { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.15rem; }
+.post-card-owner-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem; border-radius: 999px;
+  background: #dbeafe; color: #1e40af; font-size: 0.6rem; font-weight: 800; flex-shrink: 0;
+}
+.post-card-owner-name {
+  font-size: 0.78rem; font-weight: 600; color: #334155;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.post-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.4rem;
+  margin-top: auto; padding-top: 0.5rem;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.post-card-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
+
+.meta-chip {
+  font-size: 0.71rem; font-weight: 600; border-radius: 999px;
+  padding: 0.18rem 0.52rem; background: #f1f5f9; color: #475569; white-space: nowrap;
+}
+.meta-chip--location { background: #eff6ff; color: #1d4ed8; }
+.meta-chip--local    { background: #dcfce7; color: #15803d; }
+
+/* browse-owned-summary kept for backward compat */
+.browse-owned-summary {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.75rem;
+  margin-bottom: 0.85rem; padding: 0.8rem 0.95rem; border-radius: 0.9rem;
+  background: linear-gradient(135deg,#fff4e8 0%,#fffaf5 100%); border: 1px solid #fed7aa;
+}
+.browse-owned-summary strong { color: #9a3412; font-size: 0.9rem; }
+.browse-owned-summary span   { color: #7c2d12; font-size: 0.82rem; font-weight: 600; }
+
+
+/* ════════════════════════════════════════════════════════════════
+   INTERESTS — redesigned cards
+   ════════════════════════════════════════════════════════════════ */
+
+.interests-section-header {
+  margin-bottom: 1.25rem;
+}
+.interests-section-header h2 {
+  margin: 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; color: #0f172a;
+}
+.interests-section-header p {
+  margin: 0.25rem 0 0; font-size: 0.88rem; color: #5c7694;
+}
+
+.interests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 1.1rem;
+}
+
+.interest-card {
+  background: #ffffff;
+  border: 1px solid #e2eaf5;
+  border-radius: 1rem;
+  padding: 1.15rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 2px 10px rgba(5,74,145,0.07);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  animation: fadeSlideIn 0.24s ease both;
+  border-left: 4px solid #e2eaf5;
+}
+.interest-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5,74,145,0.11); }
+
+/* Status-based left border colour */
+.interest-card[data-status="pending"]          { border-left-color: #f59e0b; }
+.interest-card[data-status="acknowledged"]     { border-left-color: #3b82f6; }
+.interest-card[data-status="meeting_requested"]{ border-left-color: #8b5cf6; }
+.interest-card[data-status="withdrawn"]        { border-left-color: #94a3b8; opacity: 0.75; }
+
+.interest-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+.interest-card-domain {
+  font-size: 0.67rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: #475569;
+  background: #f1f5f9; border-radius: 999px; padding: 0.2rem 0.55rem;
+}
+.interest-card-title {
+  margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.3;
+}
+.interest-card-message {
+  margin: 0; font-size: 0.85rem; line-height: 1.55; color: #334155;
+}
+
+.interest-people-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.interest-person-pill {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.22rem 0.6rem; border-radius: 999px;
+  font-size: 0.73rem; font-weight: 600;
+}
+.interest-person-pill--requester { background: #dbeafe; color: #1e40af; }
+.interest-person-pill--owner     { background: #f0fdf4; color: #166534; }
+.interest-person-pill--conf      { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+.interest-person-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.35rem; height: 1.35rem; border-radius: 999px;
+  font-size: 0.58rem; font-weight: 800;
+  background: rgba(0,0,0,0.12); flex-shrink: 0;
+}
+
+.interest-slots-list {
+  display: grid; gap: 0.35rem;
+  padding: 0.7rem 0.85rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+}
+.interest-slot-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.82rem; color: #334155; font-weight: 500;
+}
+.interest-slot-icon { font-size: 0.8rem; flex-shrink: 0; }
+
+.interest-card-actions {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.15rem;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MEETINGS — redesigned cards
+   ════════════════════════════════════════════════════════════════ */
+
+.meetings-section-header {
+  margin-bottom: 1.25rem;
+}
+.meetings-section-header h2 {
+  margin: 0; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; color: #0f172a;
+}
+.meetings-section-header p {
+  margin: 0.3rem 0 0; font-size: 0.85rem; color: #5c7694; line-height: 1.5;
+}
+
+.meetings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%,380px), 1fr));
+  gap: 1.1rem;
+}
+
+.meeting-card-v2 {
+  background: #ffffff;
+  border: 1px solid #e2eaf5;
+  border-radius: 1rem;
+  padding: 1.15rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  box-shadow: 0 2px 10px rgba(5,74,145,0.07);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  animation: fadeSlideIn 0.24s ease both;
+}
+.meeting-card-v2:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5,74,145,0.11); }
+
+.meeting-card-v2-header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 0.65rem;
+}
+.meeting-card-v2-domain {
+  font-size: 0.67rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.08em; color: #475569;
+  background: #f1f5f9; border-radius: 999px; padding: 0.2rem 0.55rem;
+}
+.meeting-card-v2-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.meeting-card-v2-title {
+  margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.3;
+}
+.meeting-card-v2-message {
+  margin: 0; font-size: 0.85rem; line-height: 1.55; color: #334155;
+}
+
+.meeting-people-row {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+}
+.meeting-person-pill {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.22rem 0.6rem; border-radius: 999px;
+  font-size: 0.73rem; font-weight: 600;
+}
+.meeting-person-pill--req { background: #dbeafe; color: #1e40af; }
+.meeting-person-pill--own { background: #f0fdf4; color: #166534; }
+
+.meeting-selected-slot-box {
+  padding: 0.65rem 0.85rem;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.meeting-selected-slot-icon { font-size: 1rem; flex-shrink: 0; }
+.meeting-selected-slot-label {
+  font-size: 0.73rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #1d4ed8; margin-bottom: 0.1rem;
+}
+.meeting-selected-slot-time {
+  font-size: 0.88rem; font-weight: 600; color: #0f172a;
+}
+
+.meeting-card-v2-actions {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SLOT PLANNER — duplicate error styles
+   ════════════════════════════════════════════════════════════════ */
+
+.slot-planner-row--duplicate {
+  border-color: #fca5a5;
+  background: #fff5f5;
+  position: relative;
+}
+
+.slot-planner-row-dup-badge {
+  width: 100%;
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #dc2626;
+  padding: 0.1rem 0;
+  letter-spacing: 0.02em;
+}
+
+.slot-planner-error {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 0.65rem;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #991b1b;
+  line-height: 1.45;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MISC — panel header improvements
+   ════════════════════════════════════════════════════════════════ */
+
+.panel-header h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+}
+
+.panel {
+  box-shadow: 0 4px 18px rgba(5, 74, 145, 0.07);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MEETING CARD-V2 ACTIONS — button alignment fix
+   ════════════════════════════════════════════════════════════════ */
+
+.meeting-card-v2-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ANNOUNCEMENT STUDIO — modern composer
+   ════════════════════════════════════════════════════════════════ */
+
+.composer-panel.panel {
+  padding: 1.75rem;
+}
+
+.step-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 1rem 1.15rem;
+  border-radius: 0.85rem;
+  background: #f1f5f9;
+  border: 1.5px solid #e2eaf5;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.step-button:hover {
+  background: #e8f0fa;
+  border-color: #b6ccee;
+  transform: translateY(-1px);
+}
+
+.step-button.active {
+  background: #ffffff;
+  border-color: #6366f1;
+  border-left: 3px solid #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08), 0 4px 14px rgba(99, 102, 241, 0.08);
+  color: #1e1b4b;
+}
+
+.step-button .step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  background: #e2eaf5;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.step-button.active .step-index {
+  background: #6366f1;
+  color: #ffffff;
+}
+
+.step-button strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.step-button small {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.step-button.active small { color: #4338ca; }
+
+.composer-step-panel {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background: #fafbfc;
+  border: 1px solid #e8edf4;
+  border-radius: 0.85rem;
+  animation: fadeIn 0.2s ease both;
+}
+
+.composer-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid #e8edf4;
+}
+
+.composer-footer-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.composer-footer-save {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR — dark toggle footer button
+   ════════════════════════════════════════════════════════════════ */
+
+.dash-sidebar-footer-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dash-dark-toggle {
+  padding: 0.55rem 0.7rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE — html.dark  (AUTHORITATIVE BLOCK)
+   Uses !important throughout to override all hard-coded hex values
+   ════════════════════════════════════════════════════════════════ */
+
+html.dark {
+  --color-bg:           #0d1117;
+  --color-surface:      #161b22;
+  --color-border:       #30363d;
+  --color-text:         #e6edf3;
+  --color-text-muted:   #8b949e;
+  --color-text-faint:   #6e7681;
+  color-scheme: dark;
+}
+
+/* ── Root / body ─────────────────────────────────────────────── */
+html.dark,
+html.dark body,
+html.dark #root {
+  background: #0d1117 !important;
+  color: #e6edf3 !important;
+}
+
+/* ── App shell & content wrapper ─────────────────────────────── */
+html.dark .app-shell,
+html.dark .auth-shell {
+  background: #0d1117 !important;
+}
+
+html.dark .content,
+html.dark .dash-content {
+  background: #0d1117 !important;
+  color: #e6edf3 !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+html.dark .sidebar,
+html.dark .dash-sidebar {
+  background: #010409 !important;
+  border-right: 1px solid #21262d !important;
+  color: #cdd9e5 !important;
+}
+
+html.dark .dash-brand-title { color: #e6edf3 !important; }
+html.dark .dash-brand-sub   { color: #8b949e !important; }
+
+html.dark .dash-brand-mark {
+  background: #1d2d3e !important;
+}
+
+html.dark .nav-group-label { color: #6e7681 !important; }
+
+html.dark .sidebar-nav button,
+html.dark .dash-sidebar-nav button {
+  background: transparent !important;
+  color: #cdd9e5 !important;
+}
+
+html.dark .sidebar-nav button.active,
+html.dark .dash-sidebar-nav button.active {
+  background: #f17300 !important;
+  color: #ffffff !important;
+}
+
+html.dark .sidebar-nav button:not(.active):hover,
+html.dark .dash-sidebar-nav button:not(.active):hover {
+  background: #161b22 !important;
+}
+
+html.dark .nav-badge {
+  background: rgba(249, 115, 22, 0.22) !important;
+  color: #fb923c !important;
+}
+
+html.dark .sidebar-footer small,
+html.dark .dash-sidebar-footer small { color: #8b949e !important; }
+
+/* ── Topbar / user bar ────────────────────────────────────────── */
+html.dark .dash-topbar,
+html.dark .topbar {
+  background: #161b22 !important;
+  border-bottom: 1px solid #21262d !important;
+  color: #e6edf3 !important;
+}
+
+html.dark .dash-content-user-bar {
+  background: #161b22 !important;
+  border-bottom: 1px solid #21262d !important;
+}
+
+html.dark .dash-content-user-bar * { color: #cdd9e5 !important; }
+
+html.dark .dash-content-user-role { color: #8b949e !important; }
+html.dark .dash-topbar h1 { color: #e6edf3 !important; }
+html.dark .topbar-sub { color: #8b949e !important; }
+
+html.dark .dash-icon-btn {
+  background: #21262d !important;
+  color: #cdd9e5 !important;
+  border-color: #30363d !important;
+}
+html.dark .dash-icon-btn:hover { background: #30363d !important; }
+html.dark .dash-icon-btn--active {
+  background: #f17300 !important;
+  color: #fff !important;
+}
+
+html.dark .dash-user-avatar,
+html.dark .dash-user-avatar--content {
+  background: #1d2d3e !important;
+  color: #79c0ff !important;
+}
+
+html.dark .dash-notify-badge {
+  background: #f17300 !important;
+  color: #fff !important;
+}
+
+/* ── All panels / cards ──────────────────────────────────────── */
+html.dark .panel,
+html.dark .hero-panel,
+html.dark .auth-panel,
+html.dark .dash-panel,
+html.dark .dash-card,
+html.dark .metric-card,
+html.dark .dash-stat-card,
+html.dark .dash-activity-panel,
+html.dark .dash-status-panel,
+html.dark .dash-chart-panel,
+html.dark .dash-recent-panel,
+html.dark .dash-overview-stat,
+html.dark .app-shell.dash-theme .dash-panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+html.dark .dash-card .card-title,
+html.dark .dash-card .card-sub { color: #cdd9e5 !important; }
+html.dark .dash-card .card-tag {
+  background: #1d2d3e !important;
+  color: #79c0ff !important;
+}
+
+/* ── Typography inside panels ────────────────────────────────── */
+html.dark .panel h2,
+html.dark .panel h3,
+html.dark .panel-header h2,
+html.dark .panel-header h3,
+html.dark .dash-panel h2,
+html.dark .dash-panel h3,
+html.dark h1, html.dark h2, html.dark h3, html.dark h4 {
+  color: #e6edf3 !important;
+}
+
+html.dark .panel-header p,
+html.dark .empty-state p,
+html.dark p,
+html.dark small,
+html.dark span:not(.status-badge):not(.nav-badge):not(.dash-notify-badge):not(.interest-person-pill):not(.meeting-person-pill):not(.meta-chip):not(.card-domain-tag):not(.interest-card-domain):not(.meeting-card-v2-domain) {
+  color: #cdd9e5;
+}
+
+/* ── Inputs / forms ──────────────────────────────────────────── */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #388bfd !important;
+  box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15) !important;
+}
+
+html.dark label { color: #cdd9e5 !important; }
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+html.dark .ghost-button {
+  background: #21262d !important;
+  color: #cdd9e5 !important;
+  border: 1px solid #30363d !important;
+}
+
+html.dark .ghost-button:hover:not(:disabled) {
+  background: #30363d !important;
+  border-color: #8b949e !important;
+}
+
+html.dark .danger-button {
+  background: #3d1010 !important;
+  color: #fca5a5 !important;
+  border-color: #6b2121 !important;
+}
+
+/* Dark toggle in brand area */
+html.dark .dash-dark-toggle {
+  background: #21262d !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+/* ── Auth shell ──────────────────────────────────────────────── */
+html.dark .hero-panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .auth-panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .auth-tabs button {
+  background: #21262d !important;
+  color: #cdd9e5 !important;
+}
+html.dark .auth-tabs button.active {
+  background: #f17300 !important;
+  color: #ffffff !important;
+}
+html.dark .auth-input-wrap input {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+html.dark .auth-field span { color: #cdd9e5 !important; }
+html.dark .hero-copy,
+html.dark .sidebar-copy { color: #8b949e !important; }
+
+/* ── Post cards ──────────────────────────────────────────────── */
+html.dark .post-card--browse,
+html.dark .post-card--community {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+
+html.dark .post-card--own {
+  background: linear-gradient(155deg, #1f1a0d 0%, #1a1508 100%) !important;
+  border-color: #6b4f0a !important;
+}
+
+html.dark .post-card-title   { color: #e6edf3 !important; }
+html.dark .post-card-excerpt { color: #8b949e !important; }
+html.dark .post-card-owner-name { color: #cdd9e5 !important; }
+html.dark .post-card-owner-avatar { background: #1d2d3e !important; color: #79c0ff !important; }
+html.dark .post-card-footer { border-top-color: #21262d !important; }
+
+html.dark .card-domain-tag {
+  background: #21262d !important;
+  color: #8b949e !important;
+}
+html.dark .post-card--own .card-domain-tag {
+  background: #2d1f08 !important;
+  color: #e3a218 !important;
+}
+
+html.dark .meta-chip { background: #21262d !important; color: #8b949e !important; }
+html.dark .meta-chip--location { background: #1d2d3e !important; color: #79c0ff !important; }
+html.dark .meta-chip--local { background: #0d2119 !important; color: #56d364 !important; }
+
+html.dark .posts-section-header { border-bottom-color: #30363d !important; }
+html.dark .posts-section-title { color: #e6edf3 !important; }
+html.dark .posts-section-sub { color: #8b949e !important; }
+
+/* ── Browse filters ──────────────────────────────────────────── */
+html.dark .browse-filters-panel.panel,
+html.dark .browse-posts-panel.panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+
+html.dark .browse-filters-header h2 { color: #e6edf3 !important; }
+
+/* ── Post detail modal ───────────────────────────────────────── */
+html.dark .post-detail-modal-backdrop {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+html.dark .post-detail-modal {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .post-detail-modal-close {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #cdd9e5 !important;
+}
+html.dark .detail-match-rail {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+}
+html.dark .detail-match-score { color: #79c0ff !important; }
+
+/* ── Interest cards ──────────────────────────────────────────── */
+html.dark .interest-card {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+html.dark .interest-card-title { color: #e6edf3 !important; }
+html.dark .interest-card-message { color: #cdd9e5 !important; }
+html.dark .interest-card-domain {
+  background: #21262d !important;
+  color: #8b949e !important;
+}
+
+html.dark .interest-person-pill--requester { background: #1d2d3e !important; color: #79c0ff !important; }
+html.dark .interest-person-pill--owner     { background: #0d2119 !important; color: #56d364 !important; }
+html.dark .interest-person-pill--conf      { background: #21262d !important; color: #8b949e !important; border-color: #30363d !important; }
+
+html.dark .interest-slots-list {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+}
+html.dark .interest-slot-item { color: #cdd9e5 !important; }
+
+/* ── Meeting cards ───────────────────────────────────────────── */
+html.dark .meeting-card,
+html.dark .meeting-card-v2 {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+html.dark .meeting-card-v2-title   { color: #e6edf3 !important; }
+html.dark .meeting-card-v2-message { color: #cdd9e5 !important; }
+html.dark .meeting-card-v2-domain  { background: #21262d !important; color: #8b949e !important; }
+html.dark .meeting-card-v2-actions { border-top-color: #21262d !important; }
+
+html.dark .meeting-person-pill--req { background: #1d2d3e !important; color: #79c0ff !important; }
+html.dark .meeting-person-pill--own { background: #0d2119 !important; color: #56d364 !important; }
+
+html.dark .meeting-selected-slot-box {
+  background: linear-gradient(135deg, #0d1f38 0%, #161b22 100%) !important;
+  border-color: #1d4e8f !important;
+}
+html.dark .meeting-selected-slot-label { color: #79c0ff !important; }
+html.dark .meeting-selected-slot-time  { color: #e6edf3 !important; }
+
+html.dark .meeting-join-section {
+  background: linear-gradient(165deg, #0d1f38 0%, #161b22 100%) !important;
+  border-color: #1d4e8f !important;
+}
+html.dark .meeting-join-placeholder { color: #8b949e !important; }
+
+/* ── Slot planner ────────────────────────────────────────────── */
+html.dark .slot-planner-row {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .slot-planner-title  { color: #e6edf3 !important; }
+html.dark .slot-planner-hint   { color: #8b949e !important; }
+html.dark .slot-planner-label  { color: #8b949e !important; }
+html.dark .slot-planner-count  { color: #8b949e !important; }
+html.dark .slot-planner-sep    { color: #8b949e !important; }
+html.dark .slot-planner-input {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+html.dark .slot-planner-row--duplicate {
+  background: #2d0f0f !important;
+  border-color: #f97066 !important;
+}
+
+/* ── Notifications ───────────────────────────────────────────── */
+html.dark .notification-list { background: transparent !important; }
+html.dark .notification-item {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+html.dark .notification-item strong { color: #e6edf3 !important; }
+html.dark .notification-item p,
+html.dark .notification-item small { color: #8b949e !important; }
+html.dark .notification-item.unread {
+  background: #1d2d3e !important;
+  border-left: 3px solid #388bfd !important;
+}
+
+/* ── Status badges ───────────────────────────────────────────── */
+html.dark .status-badge { filter: brightness(0.75) saturate(0.8) !important; }
+html.dark .status-missed-meeting { background: #3d1010 !important; color: #fca5a5 !important; }
+
+/* ── Metric / stat cards ─────────────────────────────────────── */
+html.dark .metric-card {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .metric-card span { color: #8b949e !important; }
+html.dark .metric-card strong { color: #e6edf3 !important; }
+html.dark .metric-card small  { color: #6e7681 !important; }
+
+/* ── Overview stat + activity panels ────────────────────────── */
+html.dark .dash-stat-card {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .dash-stat-icon { background: #21262d !important; }
+html.dark .dash-stat-value { color: #e6edf3 !important; }
+html.dark .dash-stat-label,
+html.dark .dash-stat-sub   { color: #8b949e !important; }
+
+html.dark .dash-activity-panel,
+html.dark .dash-status-panel,
+html.dark .dash-chart-panel,
+html.dark .dash-recent-panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .dash-activity-title,
+html.dark .dash-status-title,
+html.dark .dash-chart-title { color: #e6edf3 !important; }
+
+html.dark .dash-activity-item { border-bottom-color: #21262d !important; }
+html.dark .dash-activity-label { color: #cdd9e5 !important; }
+html.dark .dash-activity-time  { color: #6e7681 !important; }
+html.dark .dash-activity-empty { color: #6e7681 !important; }
+html.dark .dash-overview-cta { border-top-color: #21262d !important; }
+
+/* ── Admin panel ─────────────────────────────────────────────── */
+html.dark .admin-console { background: transparent !important; }
+html.dark .admin-chart-panel { background: #161b22 !important; border-color: #30363d !important; }
+html.dark .admin-trend-gridline { stroke: #30363d !important; }
+
+/* ── Composer / Studio ───────────────────────────────────────── */
+html.dark .composer-panel.panel {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .step-button {
+  background: #161b22 !important;
+  border-color: #2a3140 !important;
+  color: #8b949e !important;
+}
+html.dark .step-button:hover {
+  background: #1c2333 !important;
+  border-color: #3a4455 !important;
+  color: #adbac7 !important;
+}
+html.dark .step-button.active {
+  background: #1c2333 !important;
+  border-color: #3a4455 !important;
+  border-left: 3px solid #7c5c3a !important;
+  color: #cdd9e5 !important;
+}
+html.dark .step-button .step-index {
+  background: #21262d !important;
+  color: #6e7681 !important;
+}
+html.dark .step-button.active .step-index {
+  background: #4a3520 !important;
+  color: #c9956a !important;
+}
+html.dark .step-button small  { color: #6e7681 !important; }
+html.dark .step-button.active small { color: #8b7355 !important; }
+
+html.dark .composer-step-panel {
+  background: #0d1117 !important;
+  border-color: #21262d !important;
+}
+html.dark .composer-footer-actions { border-top-color: #21262d !important; }
+
+/* ── Demo box (landing page) ────────────────────────────────── */
+html.dark .demo-box { background: #161b22 !important; }
+html.dark .demo-row { border-bottom-color: #21262d !important; }
+
+/* ── Profile page ────────────────────────────────────────────── */
+html.dark .detail-grid div { border-bottom-color: #21262d !important; }
+html.dark .detail-grid strong { color: #e6edf3 !important; }
+html.dark .detail-grid p      { color: #8b949e !important; }
+
+/* ── score-badge ─────────────────────────────────────────────── */
+html.dark .score-badge { background: #1d2d3e !important; color: #79c0ff !important; }
+html.dark .city-match-badge { background: #0d2119 !important; color: #56d364 !important; }
+
+/* ── Checkbox ────────────────────────────────────────────────── */
+html.dark .checkbox { color: #cdd9e5 !important; }
+
+/* ── Dark toggle button (in brand area) ──────────────────────── */
+html.dark .dash-brand {
+  border-bottom-color: #21262d !important;
+}
+
+/* ── Misc text colors ────────────────────────────────────────── */
+html.dark .interests-section-header h2,
+html.dark .meetings-section-header h2 { color: #e6edf3 !important; }
+html.dark .interests-section-header p,
+html.dark .meetings-section-header p  { color: #8b949e !important; }
+
+/* ── Empty state ─────────────────────────────────────────────── */
+html.dark .empty-state { color: #e6edf3 !important; }
+html.dark .empty-state h2 { color: #e6edf3 !important; }
+html.dark .empty-state p  { color: #8b949e !important; }
+
+
+
+html.dark {
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-border: #30363d;
+  --color-text: #e6edf3;
+  --color-text-muted: #8b949e;
+  --color-text-faint: #6e7681;
+  --color-blue-light: #1d2d3e;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Global background & text ───────────────────────────────── */
+html.dark body,
+html.dark #root {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+html.dark .app-shell,
+html.dark .auth-shell {
+  background: var(--color-bg);
+}
+
+/* ── Content area ───────────────────────────────────────────── */
+html.dark .content,
+html.dark .dash-content {
+  background: var(--color-bg);
+}
+
+/* ── Panel / card surface ───────────────────────────────────── */
+html.dark .panel,
+html.dark .hero-panel,
+html.dark .auth-panel,
+html.dark .dash-panel,
+html.dark .dash-card,
+html.dark .metric-card,
+html.dark .meeting-card,
+html.dark .meeting-card-v2,
+html.dark .interest-card,
+html.dark .post-card--community,
+html.dark .dash-stat-card,
+html.dark .dash-activity-panel,
+html.dark .post-detail-modal {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html.dark .post-card--own {
+  background: linear-gradient(155deg, #1f1a0d 0%, #1a1508 100%);
+  border-color: #6b4f0a;
+}
+
+html.dark .panel-header p,
+html.dark .empty-state p,
+html.dark .hero-copy,
+html.dark .sidebar-copy {
+  color: var(--color-text-muted);
+}
+
+html.dark .panel-header h2,
+html.dark h1, html.dark h2, html.dark h3 {
+  color: var(--color-text);
+}
+
+/* ── Form controls ──────────────────────────────────────────── */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: #0d1117;
+  border-color: #30363d;
+  color: var(--color-text);
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: #388bfd;
+  box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+}
+
+html.dark label {
+  color: #cdd9e5;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+html.dark .sidebar,
+html.dark .dash-sidebar {
+  background: #010409;
+  border-right: 1px solid #21262d;
+}
+
+html.dark .sidebar-nav button,
+html.dark .dash-sidebar-nav button {
+  color: #cdd9e5;
+}
+
+html.dark .sidebar-nav button.active,
+html.dark .dash-sidebar-nav button.active {
+  background: #f17300;
+  color: #ffffff;
+}
+
+html.dark .sidebar-nav button:not(.active):hover,
+html.dark .dash-sidebar-nav button:not(.active):hover {
+  background: #161b22;
+}
+
+/* ── Topbar / user bar ──────────────────────────────────────── */
+html.dark .dash-topbar,
+html.dark .topbar {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  color: var(--color-text);
+}
+
+html.dark .dash-content-user-bar {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+}
+
+html.dark .dash-icon-btn {
+  background: #21262d;
+  color: #cdd9e5;
+  border-color: #30363d;
+}
+
+html.dark .dash-icon-btn:hover {
+  background: #30363d;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+html.dark .ghost-button {
+  background: #21262d;
+  color: #cdd9e5;
+  border: 1px solid #30363d;
+}
+
+html.dark .ghost-button:hover:not(:disabled) {
+  background: #30363d;
+  border-color: #8b949e;
+}
+
+html.dark .danger-button {
+  background: #3d1010;
+  color: #f97316;
+  border-color: #6b2121;
+}
+
+/* ── Status badges ──────────────────────────────────────────── */
+html.dark .status-badge {
+  filter: brightness(0.8) saturate(0.85);
+}
+
+/* ── Interest card specifics ────────────────────────────────── */
+html.dark .interest-card {
+  background: var(--color-surface);
+  border-color: #30363d;
+}
+
+html.dark .interest-person-pill--requester { background: #1d2d3e; color: #79c0ff; }
+html.dark .interest-person-pill--owner     { background: #0d2119; color: #56d364; }
+html.dark .interest-person-pill--conf      { background: #21262d; color: #8b949e; border-color: #30363d; }
+
+html.dark .interest-slots-list {
+  background: #0d1117;
+  border-color: #30363d;
+}
+html.dark .interest-slot-item { color: #cdd9e5; }
+
+/* ── Meeting card specifics ────────────────────────────────── */
+html.dark .meeting-card-v2 {
+  background: var(--color-surface);
+  border-color: #30363d;
+}
+
+html.dark .meeting-person-pill--req { background: #1d2d3e; color: #79c0ff; }
+html.dark .meeting-person-pill--own { background: #0d2119; color: #56d364; }
+
+html.dark .meeting-selected-slot-box {
+  background: linear-gradient(135deg, #0d1f38 0%, #161b22 100%);
+  border-color: #1d4e8f;
+}
+html.dark .meeting-selected-slot-label { color: #79c0ff; }
+html.dark .meeting-selected-slot-time  { color: var(--color-text); }
+
+html.dark .meeting-card-v2-actions {
+  border-top-color: #21262d;
+}
+
+/* ── Post cards ─────────────────────────────────────────────── */
+html.dark .post-card--community {
+  background: var(--color-surface);
+  border-color: #30363d;
+}
+
+html.dark .card-domain-tag {
+  background: #21262d;
+  color: #8b949e;
+}
+
+html.dark .post-card--own .card-domain-tag {
+  background: #2d1f08;
+  color: #e3a218;
+}
+
+html.dark .post-card-title   { color: var(--color-text); }
+html.dark .post-card-excerpt { color: var(--color-text-muted); }
+html.dark .post-card-owner-name { color: #cdd9e5; }
+html.dark .post-card-owner-avatar { background: #1d2d3e; color: #79c0ff; }
+
+html.dark .post-card-footer { border-top-color: #21262d; }
+
+html.dark .meta-chip          { background: #21262d; color: #8b949e; }
+html.dark .meta-chip--location { background: #1d2d3e; color: #79c0ff; }
+html.dark .meta-chip--local   { background: #0d2119; color: #56d364; }
+
+html.dark .posts-section-header { border-bottom-color: #30363d; }
+html.dark .posts-section-title  { color: var(--color-text); }
+html.dark .posts-section-sub    { color: var(--color-text-muted); }
+
+/* ── Browse filters ─────────────────────────────────────────── */
+html.dark .browse-filters-panel.panel {
+  background: var(--color-surface);
+  border-color: #30363d;
+}
+
+/* ── Post detail modal ──────────────────────────────────────── */
+html.dark .post-detail-modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+html.dark .post-detail-modal-close {
+  background: #21262d;
+  border-color: #30363d;
+  color: #cdd9e5;
+}
+
+html.dark .detail-match-rail {
+  background: #0d1117;
+  border-color: #30363d;
+}
+
+html.dark .detail-match-score { color: #79c0ff; }
+
+/* ── Composer / Studio ──────────────────────────────────────── */
+html.dark .step-button {
+  background: #161b22;
+  border-color: #2a3140;
+  color: #8b949e;
+}
+
+html.dark .step-button:hover {
+  background: #1c2333;
+  border-color: #3a4455;
+  color: #adbac7;
+}
+
+html.dark .step-button.active {
+  background: #1c2333;
+  border-color: #3a4455;
+  border-left: 3px solid #7c5c3a;
+  color: #cdd9e5;
+}
+
+html.dark .step-button .step-index {
+  background: #21262d;
+  color: #6e7681;
+}
+
+html.dark .step-button.active .step-index {
+  background: #4a3520;
+  color: #c9956a;
+}
+
+html.dark .step-button small  { color: #6e7681; }
+html.dark .step-button.active small { color: #8b7355; }
+
+html.dark .composer-step-panel {
+  background: #0d1117;
+  border-color: #21262d;
+}
+
+html.dark .composer-footer-actions { border-top-color: #21262d; }
+
+/* ── Slot planner ───────────────────────────────────────────── */
+html.dark .slot-planner-row {
+  background: #161b22;
+  border-color: #30363d;
+}
+
+html.dark .slot-planner-input {
+  background: #0d1117;
+  border-color: #30363d;
+  color: var(--color-text);
+}
+
+html.dark .slot-planner-row--duplicate {
+  background: #2d0f0f;
+  border-color: #f97066;
+}
+
+/* ── Notifications ──────────────────────────────────────────── */
+html.dark .notification-item {
+  background: var(--color-surface);
+  border-color: #30363d;
+  color: var(--color-text);
+}
+
+html.dark .notification-item.unread {
+  background: #1d2d3e;
+  border-color: #388bfd;
+}
+
+/* ── Overview stats ─────────────────────────────────────────── */
+html.dark .dash-stat-card,
+html.dark .dash-overview-stat {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html.dark .dash-activity-panel,
+html.dark .dash-status-panel,
+html.dark .dash-chart-panel,
+html.dark .dash-recent-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* ── Auth shell ─────────────────────────────────────────────── */
+html.dark .hero-panel {
+  background: #161b22;
+  border-color: #30363d;
+}
+
+html.dark .auth-panel {
+  background: #161b22;
+  border-color: #30363d;
+}
+
+html.dark .auth-tabs button {
+  background: #21262d;
+  color: #cdd9e5;
+}
+
+html.dark .auth-tabs button.active {
+  background: #f17300;
+  color: #ffffff;
+}
+
+html.dark .auth-input-wrap input {
+  background: #0d1117;
+  border-color: #30363d;
+  color: var(--color-text);
+}
+
+/* ── Score badge ────────────────────────────────────────────── */
+html.dark .score-badge {
+  background: #1d2d3e;
+  color: #79c0ff;
+}
+
+/* ── Meeting join section ───────────────────────────────────── */
+html.dark .meeting-join-section {
+  background: linear-gradient(165deg, #0d1f38 0%, #161b22 100%);
+  border-color: #1d4e8f;
+}
+
+html.dark .meeting-join-placeholder { color: #8b949e; }
+
+/* ── Nav badge ──────────────────────────────────────────────── */
+html.dark .nav-badge {
+  background: rgba(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+/* ── Brand mark ─────────────────────────────────────────────── */
+html.dark .dash-brand-title { color: #e6edf3; }
+html.dark .dash-brand-sub   { color: #8b949e; }
+
+/* ════════════════════════════════════════════════════════════════
+   NOTIFICATION CARDS — modern feed layout
+   ════════════════════════════════════════════════════════════════ */
+
+.notif-panel {
+  padding: 1.5rem;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2eaf5;
+}
+
+.notif-panel-title {
+  margin: 0 0 0.2rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.notif-panel-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.notif-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-radius: 0.85rem;
+  border: 1px solid #e2eaf5;
+  background: #f8fafc;
+  border-left: 3.5px solid #cbd5e1;
+  transition: background 0.15s ease, transform 0.15s ease;
+  animation: fadeSlideIn 0.22s var(--t) both;
+}
+
+.notif-item:hover {
+  background: #f1f5fb;
+  transform: translateX(2px);
+}
+
+/* type colors */
+.notif-item--meeting  { border-left-color: #6366f1; }
+.notif-item--interest { border-left-color: #0ea5e9; }
+.notif-item--verify   { border-left-color: #22c55e; }
+.notif-item--default  { border-left-color: #94a3b8; }
+
+.notif-item--unread {
+  background: #f0f6ff;
+  border-color: #bfdbfe;
+  border-left-color: #3b82f6;
+}
+
+.notif-item-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.notif-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.notif-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notif-item-type {
+  font-size: 0.77rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #334155;
+}
+
+.notif-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b82f6;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.notif-item-message {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.notif-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.1rem;
+}
+
+.notif-item-time {
+  font-size: 0.76rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.notif-delete-btn {
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+  margin-left: auto;
+}
+
+.notif-delete-btn:hover {
+  color: #ef4444;
+  background: #fff1f2;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE TOGGLE — topbar / user-bar button
+   ════════════════════════════════════════════════════════════════ */
+
+.dash-dark-toggle-topbar {
+  /* inherits .dash-icon-btn sizing */
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE — FINAL OVERRIDES (highest specificity, appended last)
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Base page background ────────────────────────────────────── */
+html.dark,
+html.dark body {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #0d1117 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ACCENT COLOR — muted, desaturated warm tone (not neon/orange)
+   Hue: warm brown-amber  |  Sat: very low  |  Not glowing
+   ════════════════════════════════════════════════════════════════ */
+
+/* Primary action buttons — exclude sidebar nav buttons */
+html.dark button:not(.ghost-button):not(.danger-button):not(.notif-delete-btn):not(.meeting-join-open):not(.dash-sidebar-nav button):not(.dash-icon-btn) {
+  background: #7c4a03 !important;
+  color: #f3d9b8 !important;
+  box-shadow: none !important;
+}
+
+/* Sidebar nav — specifically exclude from any button overrides */
+html.dark .dash-sidebar-nav > button,
+html.dark .sidebar-nav > button {
+  background: transparent !important;
+  color: rgba(255,255,255,0.55) !important;
+  border-left-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.dark .dash-sidebar-nav > button:hover,
+html.dark .sidebar-nav > button:hover {
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.85) !important;
+  border-left-color: rgba(255,255,255,0.12) !important;
+}
+
+html.dark .dash-sidebar-nav > button.active,
+html.dark .sidebar-nav > button.active {
+  background: rgba(255,255,255,0.08) !important;
+  color: #ffffff !important;
+  border-left-color: #a05a1e !important;
+  font-weight: 600 !important;
+}
+
+html.dark .nav-badge {
+  background: rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.7) !important;
+}
+
+html.dark .nav-group-label { color: rgba(255,255,255,0.28) !important; }
+
+/* Auth tabs active */
+html.dark .auth-tabs button.active {
+  background: #7c4a03 !important;
+  color: #f3d9b8 !important;
+}
+
+/* Icon btn active state */
+html.dark .dash-icon-btn--active {
+  background: rgba(124, 74, 3, 0.3) !important;
+  color: #d4a054 !important;
+  border-color: rgba(124, 74, 3, 0.5) !important;
+  box-shadow: none !important;
+}
+
+
+/* Notification badge */
+html.dark .dash-notify-badge {
+  background: #7c4a03 !important;
+  color: #f3d9b8 !important;
+  border-color: #0d1117 !important;
+}
+
+/* ── All ghost/secondary buttons in dark mode ─────────────────── */
+html.dark .ghost-button {
+  background: #1e2530 !important;
+  color: #adbac7 !important;
+  border: 1px solid #30363d !important;
+}
+html.dark .ghost-button:hover {
+  background: #2d3748 !important;
+  color: #e6edf3 !important;
+  border-color: #4a5568 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   WHITE / BRIGHT SPOTS — catch all remaining bright backgrounds
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Stat icon emoji wrappers ────────────────────────────────── */
+html.dark .dash-stat-icon-wrap {
+  background: #1e2530 !important;
+  border: 1px solid #30363d !important;
+}
+
+/* ── Status list pills ───────────────────────────────────────── */
+html.dark .dash-status-list li {
+  border-bottom-color: #21262d !important;
+}
+html.dark .dash-status-name { color: #adbac7 !important; }
+html.dark .dash-status-pill {
+  background: #1e2530 !important;
+  color: #8b949e !important;
+}
+html.dark .dash-status-pill.tone-active {
+  background: #0d2119 !important;
+  color: #56d364 !important;
+}
+html.dark .dash-status-pill.tone-meet {
+  background: #0a1f38 !important;
+  color: #58a6ff !important;
+}
+html.dark .dash-status-pill.tone-closed {
+  background: #1a1236 !important;
+  color: #a371f7 !important;
+}
+
+/* ── Activity meta text ──────────────────────────────────────── */
+html.dark .dash-activity-meta   { color: #6e7681 !important; }
+html.dark .dash-activity-title  { color: #cdd9e5 !important; }
+
+/* ── Chart / SVG text labels that stay dark ──────────────────── */
+html.dark .dash-card text,
+html.dark svg text,
+html.dark .chart-tick,
+html.dark .chart-label {
+  fill: #8b949e !important;
+}
+
+/* ── Any element with explicit white background left over ─────── */
+html.dark *:not(img):not(svg):not(canvas) {
+  --white-override: transparent;
+}
+
+/* targeted: ensure dark surfaces remain dark, WITHOUT unsetting light-mode */
+/* (removed dangerous background-color: unset that broke light mode inputs) */
+
+
+/* ── Chart container backgrounds ────────────────────────────── */
+html.dark .dash-card--chart {
+  background: #161b22 !important;
+}
+html.dark .donut-canvas-wrap canvas,
+html.dark .donut-canvas-wrap {
+  background: transparent !important;
+}
+
+/* ── "New post" / "New announcement" CTA button ──────────────── */
+html.dark .dash-overview-cta button,
+html.dark .dash-overview-cta a {
+  background: #7c4a03 !important;
+  color: #f3d9b8 !important;
+  border: none !important;
+}
+
+/* ── Meeting join (green link) — keep green, just soften ─────── */
+html.dark .meeting-join-open {
+  background: #14532d !important;
+  border-color: #166534 !important;
+  color: #bbf7d0 !important;
+}
+
+/* ── Admin chart + trend panels ──────────────────────────────── */
+html.dark .admin-chart-panel,
+html.dark .chart-box {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+}
+html.dark .admin-trend-tick { fill: #6e7681 !important; }
+html.dark .admin-trend-gridline { stroke: #21262d !important; }
+html.dark .admin-trend-dot-ring { stroke: #0d1117 !important; }
+
+/* ── User bar ────────────────────────────────────────────────── */
+html.dark .dash-content-user-bar {
+  background: #13181f !important;
+  border-bottom: 1px solid #21262d !important;
+}
+html.dark .dash-content-user-bar * { color: #cdd9e5 !important; }
+html.dark .dash-content-user-name  { color: #e6edf3 !important; }
+html.dark .dash-content-user-role  { color: #6b93b8 !important; }
+html.dark .dash-content-user-meta-sep { color: #444c56 !important; }
+html.dark .dash-user-avatar--content {
+  background: #1d2d3e !important;
+  border-color: #30363d !important;
+  color: #58a6ff !important;
+}
+html.dark .dash-content-user-bar button.dash-icon-btn {
+  background: #1e2530 !important;
+  border-color: #30363d !important;
+  color: #8b949e !important;
+}
+html.dark .dash-content-user-bar button.dash-icon-btn:hover {
+  background: #2d3748 !important;
+  color: #cdd9e5 !important;
+}
+
+/* ── Notification feed ───────────────────────────────────────── */
+html.dark .notif-panel-header { border-bottom-color: #21262d !important; }
+html.dark .notif-panel-title  { color: #e6edf3 !important; }
+html.dark .notif-panel-sub    { color: #6e7681 !important; }
+
+html.dark .notif-item {
+  background: #161b22 !important;
+  border-color: #21262d !important;
+}
+html.dark .notif-item:hover   { background: #1c2230 !important; }
+
+html.dark .notif-item--meeting  { border-left-color: #6e76d6 !important; }
+html.dark .notif-item--interest { border-left-color: #2f8ec4 !important; }
+html.dark .notif-item--verify   { border-left-color: #2d8a52 !important; }
+html.dark .notif-item--default  { border-left-color: #3a4455 !important; }
+
+html.dark .notif-item--unread {
+  background: #16202e !important;
+  border-color: #1d3a5e !important;
+  border-left-color: #2f6db5 !important;
+}
+
+html.dark .notif-item-type    { color: #adbac7 !important; }
+html.dark .notif-item-message { color: #8b949e !important; }
+html.dark .notif-item-time    { color: #444c56 !important; }
+html.dark .notif-unread-dot   { background: #2f6db5 !important; }
+
+html.dark .notif-delete-btn {
+  color: #444c56 !important;
+  background: transparent !important;
+}
+html.dark .notif-delete-btn:hover {
+  color: #c44e4e !important;
+  background: rgba(180, 60, 60, 0.12) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SIDEBAR NAV — ULTRA SPECIFIC (must be last, always wins)
+   Clean minimal tab style: no backgrounds on inactive items
+   ════════════════════════════════════════════════════════════════ */
+
+html.dark .dash-sidebar-nav > button {
+  background: transparent !important;
+  color: rgba(255,255,255,0.5) !important;
+  border-left: 3px solid transparent !important;
+  box-shadow: none !important;
+}
+
+html.dark .dash-sidebar-nav > button:hover {
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.82) !important;
+  border-left-color: rgba(255,255,255,0.1) !important;
+}
+
+html.dark .dash-sidebar-nav > button.active {
+  background: rgba(255,255,255,0.07) !important;
+  color: #ffffff !important;
+  border-left-color: #a06030 !important;
+  font-weight: 600 !important;
+}
+
+html.dark .dash-sidebar-nav .nav-badge {
+  background: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.65) !important;
+}
+
+html.dark .nav-group-label {
+  color: rgba(255,255,255,0.25) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP BUTTONS (composer) — ULTRA SPECIFIC, always wins
+   No orange, no glow — clean dark surface with left accent only
+   ════════════════════════════════════════════════════════════════ */
+
+html.dark .composer-panel .step-button,
+html.dark .composer-steps .step-button {
+  background: #161b22 !important;
+  border: 1.5px solid #2a3140 !important;
+  color: #6e7681 !important;
+  box-shadow: none !important;
+}
+
+html.dark .composer-panel .step-button:hover,
+html.dark .composer-steps .step-button:hover {
+  background: #1c2333 !important;
+  border-color: #3a4455 !important;
+  color: #adbac7 !important;
+}
+
+html.dark .composer-panel .step-button.active,
+html.dark .composer-steps .step-button.active {
+  background: #1a2235 !important;
+  border: 1.5px solid #2a3140 !important;
+  border-left: 3px solid #6b4c2a !important;
+  color: #cdd9e5 !important;
+  box-shadow: none !important;
+}
+
+html.dark .composer-panel .step-button .step-index,
+html.dark .composer-steps .step-button .step-index {
+  background: #21262d !important;
+  color: #6e7681 !important;
+}
+
+html.dark .composer-panel .step-button.active .step-index,
+html.dark .composer-steps .step-button.active .step-index {
+  background: #3a2810 !important;
+  color: #a07848 !important;
+}
+
+html.dark .composer-panel .step-button small,
+html.dark .composer-steps .step-button small {
+  color: #444c56 !important;
+}
+
+html.dark .composer-panel .step-button.active small,
+html.dark .composer-steps .step-button.active small {
+  color: #6b5535 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   COMPOSER OPTION CARD (checkbox area) — dark mode
+   ════════════════════════════════════════════════════════════════ */
+
+html.dark .composer-panel .composer-option-card,
+html.dark .composer-option-card {
+  background: #1c2333 !important;
+  border-color: #2a3140 !important;
+  color: #cdd9e5 !important;
+}
+
+html.dark .composer-option-card label,
+html.dark .composer-option-card p,
+html.dark .composer-option-card small {
+  color: #8b949e !important;
+}
+
+html.dark .composer-option-card strong {
+  color: #cdd9e5 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP BUTTONS — ABSOLUTE FINAL OVERRIDE (no orange anywhere)
+   Higher specificity than broad button rule
+   ════════════════════════════════════════════════════════════════ */
+
+/* Light mode: indigo accent, no orange */
+.composer-steps .step-button.active,
+.composer-panel .step-button.active {
+  background: #eef2ff !important;
+  border-color: #6366f1 !important;
+  border-left: 3px solid #6366f1 !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1) !important;
+  color: #1e1b4b !important;
+}
+
+.composer-steps .step-button.active .step-index,
+.composer-panel .step-button.active .step-index {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.composer-steps .step-button.active small,
+.composer-panel .step-button.active small {
+  color: #4338ca !important;
+}
+
+/* Dark mode: muted surface, no orange at all */
+html.dark .composer-steps .step-button,
+html.dark .composer-panel .step-button {
+  background: #161b22 !important;
+  border: 1.5px solid #21262d !important;
+  color: #6e7681 !important;
+  box-shadow: none !important;
+}
+
+html.dark .composer-steps .step-button:hover,
+html.dark .composer-panel .step-button:hover {
+  background: #1c2333 !important;
+  border-color: #30363d !important;
+  color: #adbac7 !important;
+}
+
+html.dark .composer-steps .step-button.active,
+html.dark .composer-panel .step-button.active {
+  background: #1a2235 !important;
+  border: 1.5px solid #2a3a5a !important;
+  border-left: 3px solid #4a5580 !important;
+  color: #cdd9e5 !important;
+  box-shadow: none !important;
+}
+
+html.dark .composer-steps .step-button .step-index,
+html.dark .composer-panel .step-button .step-index {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #6e7681 !important;
+}
+
+html.dark .composer-steps .step-button.active .step-index,
+html.dark .composer-panel .step-button.active .step-index {
+  background: #2e3d5c !important;
+  border-color: #4a5580 !important;
+  color: #8eaad4 !important;
+}
+
+html.dark .composer-steps .step-button small,
+html.dark .composer-panel .step-button small {
+  color: #444c56 !important;
+}
+
+html.dark .composer-steps .step-button.active small,
+html.dark .composer-panel .step-button.active small {
+  color: #6b7fa8 !important;
 }
