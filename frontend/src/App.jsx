@@ -1824,7 +1824,15 @@ function App() {
 
         {!!publishValidationModal.length && (
           <div
-            className="modal-backdrop"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(10, 22, 40, 0.45)",
+              display: "grid",
+              placeItems: "center",
+              zIndex: 999,
+              padding: "16px",
+            }}
             role="presentation"
             onClick={(event) => {
               if (event.target === event.currentTarget) {
@@ -1833,29 +1841,71 @@ function App() {
             }}
           >
             <div
-              className="validation-modal"
+              style={{
+                width: "min(460px, 92vw)",
+                background: "#ffffff",
+                borderRadius: "16px",
+                padding: "20px 22px",
+                boxShadow: "0 12px 36px rgba(0, 0, 0, 0.16)",
+                border: "1px solid #e8edf4",
+              }}
               role="dialog"
               aria-modal="true"
               aria-labelledby="publish-validation-title"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="validation-modal-header">
-                <span className="validation-modal-icon" aria-hidden>⚠</span>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                <span
+                  aria-hidden
+                  style={{
+                    display: "inline-grid",
+                    placeItems: "center",
+                    width: "34px",
+                    height: "34px",
+                    borderRadius: "999px",
+                    background: "#fff4e8",
+                    color: "#c2410c",
+                    fontSize: "16px",
+                    flexShrink: 0,
+                  }}
+                >
+                  !
+                </span>
                 <div>
-                  <h2 id="publish-validation-title">Complete these fields before publishing</h2>
-                  <p>We found a few required items missing from your post.</p>
+                  <h2 id="publish-validation-title" style={{ margin: 0, fontSize: "18px", fontWeight: 800, color: "#0f172a" }}>
+                    Complete these fields before publishing
+                  </h2>
+                  <p style={{ margin: "4px 0 0", color: "#475569", fontSize: "14px", lineHeight: 1.5 }}>
+                    We found a few required items missing from your post.
+                  </p>
                 </div>
               </div>
-              <div className="validation-modal-rule" />
-              <ul className="validation-modal-list">
+              <div style={{ height: 0, margin: "16px 0", borderTop: "1px solid #e2e8f0" }} />
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "10px" }}>
                 {publishValidationModal.map((field) => (
-                  <li key={field.key}>
-                    <strong>{field.label}</strong>
-                    <span>Step {field.step + 1}: {studioSteps[field.step].title}</span>
+                  <li
+                    key={field.key}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                      listStyle: "none",
+                      margin: 0,
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <strong style={{ color: "#0f172a", fontSize: "14px", display: "block" }}>{field.label}</strong>
+                    <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 600, whiteSpace: "nowrap", display: "block" }}>
+                      Step {field.step + 1}: {studioSteps[field.step].title}
+                    </span>
                   </li>
                 ))}
               </ul>
-              <div className="validation-modal-actions">
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "18px", flexWrap: "wrap" }}>
                 <button type="button" className="ghost-button" onClick={() => setPublishValidationModal([])}>
                   Close
                 </button>
