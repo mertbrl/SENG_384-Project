@@ -545,7 +545,7 @@ function App() {
   const [locations, setLocations] = useState([]);
   const [loginForm, setLoginForm] = useState(emptyLoginForm);
   const [registerForm, setRegisterForm] = useState(emptyRegisterForm);
-  const [verificationToken, setVerificationToken] = useState("");
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [filters, setFilters] = useState(emptyFilters);
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -710,6 +710,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!resendCountdown) return undefined;
+    const timer = window.setInterval(() => {
+      setResendCountdown((current) => (current > 1 ? current - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCountdown]);
+
+  useEffect(() => {
     if (session) {
       localStorage.setItem("health-ai-session", JSON.stringify(session));
     } else {
@@ -858,36 +866,9 @@ function App() {
     try {
       const { privacyAccepted: _privacyAccepted, ...registerPayload } = registerForm;
       const result = await api("/auth/register", { method: "POST", body: registerPayload });
-      setVerificationToken("");
+      setResendCountdown(60);
       setView("verify");
-      setMessage(result.message || "Account created. Please check your email for the verification token.");
-    } catch (caughtError) {
-      setError(caughtError.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyEmail(event) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      let token = String(verificationToken || "").trim();
-      try {
-        token = decodeURIComponent(token);
-      } catch {
-        /* ignore */
-      }
-      token = token.replace(/\s+/g, "");
-      const result = await api("/auth/verify-email", {
-        method: "POST",
-        body: { token },
-      });
-      setLoginForm({ email: result.user?.email || registerForm.email, password: registerForm.password });
-      setView("login");
-      setMessage(result.message || "Email verified.");
+      setMessage(result.message || "Account created. Please check your email for the verification link.");
     } catch (caughtError) {
       setError(caughtError.message);
     } finally {
@@ -896,6 +877,7 @@ function App() {
   }
 
   async function resendVerification() {
+    if (resendCountdown > 0) return;
     setLoading(true);
     setError("");
     setMessage("");
@@ -904,7 +886,7 @@ function App() {
         method: "POST",
         body: { email: registerForm.email },
       });
-      setVerificationToken("");
+      setResendCountdown(60);
       setMessage(result.message || "A new verification email was sent.");
     } catch (caughtError) {
       setError(caughtError.message);
@@ -926,7 +908,7 @@ function App() {
     setEditingPostId(null);
     setLoginForm(emptyLoginForm);
     setRegisterForm(emptyRegisterForm);
-    setVerificationToken("");
+    setResendCountdown(0);
     setAuthInlineError("");
     setRegisterInlineError("");
   }
@@ -1376,18 +1358,29 @@ function App() {
           )}
 
           {view === "verify" && (
-            <form className="form-stack auth-form" onSubmit={handleVerifyEmail}>
-              <h2>Email verification</h2>
-              <p>Check your inbox for the verification token and paste it below. You can resend if needed.</p>
-              <Field label="Verification token" value={verificationToken} onChange={setVerificationToken} />
+            <div className="form-stack auth-form">
+              <h2>Verify your email</h2>
+              <p>
+                We sent a verification link to <strong>{registerForm.email}</strong>. Open the email and click the link to
+                activate your account.
+              </p>
+              <p className="auth-subtitle">
+                You do not need to copy a token manually anymore. Once verification succeeds, we will bring you back to sign in.
+              </p>
               <div className="form-actions">
-                <button type="submit" disabled={loading}>Verify email</button>
-                <button type="button" className="ghost-button" onClick={resendVerification} disabled={loading || !registerForm.email}>Resend token</button>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={resendVerification}
+                  disabled={loading || !registerForm.email || resendCountdown > 0}
+                >
+                  {resendCountdown > 0 ? `Resend email in ${resendCountdown}s` : "Resend verification email"}
+                </button>
               </div>
               <p className="switch-link">
                 Back to <button type="button" className="text-link" onClick={() => setView("login")}>Sign In</button>
               </p>
-            </form>
+            </div>
           )}
           </div>
         </section>
