@@ -1304,6 +1304,19 @@ function App() {
         <section className="auth-panel clean-auth-panel">
           <div className="auth-panel-brand" aria-label="Studio">
             <small className="brand-mark-tagline">Pi-thon Dynamics</small>
+            <button
+              type="button"
+              className="auth-theme-toggle"
+              onClick={() => {
+                const isDark = document.documentElement.classList.toggle("dark");
+                localStorage.setItem("theme", isDark ? "dark" : "light");
+              }}
+              title="Toggle dark mode"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            </button>
           </div>
           <div className="auth-panel-stack">
           {view === "login" && (
@@ -1336,13 +1349,25 @@ function App() {
               <p className="switch-link">
                 New here? <button type="button" className="text-link" onClick={() => setView("register")}>Create an account</button>
               </p>
+              {/* Demo quick-login buttons */}
               <div className="demo-credentials">
-                <strong>Demo Accounts</strong>
-                {demoAccounts.map((account) => (
-                  <p key={account.email}>
-                    {account.role}: <span>{account.email}</span> / <code>{account.password}</code>
-                  </p>
-                ))}
+                <p className="demo-credentials-label">Quick Demo Login</p>
+                <div className="demo-quick-btns">
+                  {demoAccounts.map((account) => (
+                    <button
+                      key={account.email}
+                      type="button"
+                      className="demo-quick-btn"
+                      onClick={() => {
+                        setLoginForm({ email: account.email, password: account.password });
+                        setAuthInlineError("");
+                      }}
+                    >
+                      <span className="demo-quick-role">{account.role}</span>
+                      <span className="demo-quick-email">{account.email}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </form>
           )}
@@ -1434,7 +1459,7 @@ function App() {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path
                 d="M2 12h4l2.5-7 3 14 3-9 2 4 1.5-2H22"
-                stroke="rgba(255,255,255,0.9)"
+                stroke="currentColor"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"

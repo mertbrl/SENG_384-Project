@@ -4871,3 +4871,143 @@ html.dark .composer-steps .step-button.active small,
 html.dark .composer-panel .step-button.active small {
   color: #6b7fa8 !important;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   DARK MODE — SIDEBAR NAV (overrides light-mode base styles)
+   ════════════════════════════════════════════════════════════════ */
+
+html.dark .nav-group-label { color: rgba(255,255,255,0.3) !important; }
+
+html.dark .dash-sidebar-nav > button {
+  color: rgba(255,255,255,0.5) !important;
+  border-left-color: transparent !important;
+}
+html.dark .dash-sidebar-nav > button:hover {
+  background: rgba(255,255,255,0.05) !important;
+  color: rgba(255,255,255,0.85) !important;
+  border-left-color: rgba(255,255,255,0.1) !important;
+}
+html.dark .dash-sidebar-nav > button.active {
+  background: rgba(255,255,255,0.08) !important;
+  color: #ffffff !important;
+  border-left-color: #7c5c3a !important;
+}
+html.dark .dash-sidebar-nav .nav-badge {
+  background: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.65) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DEMO QUICK LOGIN BUTTONS
+   ════════════════════════════════════════════════════════════════ */
+
+.demo-credentials {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e8eef5;
+}
+
+.demo-credentials-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #94a3b8;
+}
+
+.demo-quick-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.demo-quick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.6rem;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+  box-shadow: none !important;
+  text-align: left;
+}
+
+.demo-quick-btn:hover {
+  background: #e8f0fa !important;
+  border-color: #93c5fd !important;
+}
+
+.demo-quick-role {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #4f46e5;
+  min-width: 75px;
+}
+
+.demo-quick-email {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-family: monospace;
+}
+
+/* Dark mode demo buttons */
+html.dark .demo-credentials { border-top-color: #21262d !important; }
+html.dark .demo-credentials-label { color: #6e7681 !important; }
+html.dark .demo-quick-btn {
+  background: #1c2333 !important;
+  border-color: #2a3140 !important;
+  color: #adbac7 !important;
+}
+html.dark .demo-quick-btn:hover {
+  background: #263148 !important;
+  border-color: #3a4f70 !important;
+}
+html.dark .demo-quick-role { color: #8eaad4 !important; }
+html.dark .demo-quick-email { color: #6e7681 !important; }
+
+/* ════════════════════════════════════════════════════════════════
+   AUTH PAGE THEME TOGGLE BUTTON
+   ════════════════════════════════════════════════════════════════ */
+
+.auth-panel-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-theme-toggle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.auth-theme-toggle:hover {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html.dark .auth-theme-toggle {
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #8b949e !important;
+}
+html.dark .auth-theme-toggle:hover {
+  background: #2d3748 !important;
+  color: #cdd9e5 !important;
+}
