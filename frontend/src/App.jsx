@@ -528,17 +528,14 @@ function AuthField({ label, value, onChange, type = "text", placeholder = "", ic
       <span>{label}</span>
       <div className="auth-input-wrap">
         <span className="auth-input-icon" aria-hidden="true">{icon}</span>
-        <input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
+        <input autoComplete="off" type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
       </div>
     </label>
   );
 }
 
 function App() {
-  const [session, setSession] = useState(() => {
-    const saved = localStorage.getItem("health-ai-session");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [session, setSession] = useState(null);
   const [view, setView] = useState("login");
   const [activeTab, setActiveTab] = useState("feed");
   const [feedSection, setFeedSection] = useState("overview");
@@ -695,6 +692,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    localStorage.removeItem("health-ai-session");
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const verified = params.get("verified");
     const verifyError = params.get("error");
@@ -716,14 +717,6 @@ function App() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [resendCountdown]);
-
-  useEffect(() => {
-    if (session) {
-      localStorage.setItem("health-ai-session", JSON.stringify(session));
-    } else {
-      localStorage.removeItem("health-ai-session");
-    }
-  }, [session]);
 
   useEffect(() => {
     if (message) {
@@ -1274,7 +1267,7 @@ function App() {
           </div>
           <div className="auth-panel-stack">
           {view === "login" && (
-            <form className="form-stack auth-form" onSubmit={handleLogin}>
+            <form className="form-stack auth-form" onSubmit={handleLogin} autoComplete="off">
               <h2>Welcome to Health AI</h2>
               <p className="auth-subtitle">Sign in to continue</p>
               <AuthField
@@ -1315,7 +1308,7 @@ function App() {
           )}
 
           {view === "register" && (
-            <form className="form-stack auth-form" onSubmit={handleRegister}>
+            <form className="form-stack auth-form" onSubmit={handleRegister} autoComplete="off">
               <h2>Create your account</h2>
               <p className="auth-subtitle">Join Health AI in a minute</p>
               <div className="form-grid">
@@ -1365,7 +1358,7 @@ function App() {
                 activate your account.
               </p>
               <p className="auth-subtitle">
-                You do not need to copy a token manually anymore. Once verification succeeds, we will bring you back to sign in.
+                You do not need to copy a token manually. Once verification succeeds, we will bring you back to sign in.
               </p>
               <div className="form-actions">
                 <button
