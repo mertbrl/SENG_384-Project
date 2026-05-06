@@ -35,43 +35,52 @@ const authService = {
     const location = await resolveLocation(prisma, country, city);
     const verificationToken = createVerificationToken();
     const verificationExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
+    let user;
+    try {
+      user = await authRepository.createUser({
+        fullName: fullName.trim(),
+        email: email.toLowerCase().trim(),
+        passwordHash,
+        role,
+        institution: institution || "",
+        countryId: location.countryId,
+        cityId: location.cityId,
+        expertise: expertise || "",
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
+      });
 
-    const user = await authRepository.createUser({
-      fullName: fullName.trim(),
-      email: email.toLowerCase().trim(),
-      passwordHash,
-      role,
-      institution: institution || "",
-      countryId: location.countryId,
-      cityId: location.cityId,
-      expertise: expertise || "",
-      emailVerificationToken: verificationToken,
-      emailVerificationExpiresAt: verificationExpiresAt,
-    });
-
-    await auditService.log({
-      userId: user.id,
-      role: user.role,
-      actionType: "register",
-      details: `New ${role} account registered`,
-      ipAddress,
-    });
-
-    await sendVerificationEmail({
-      to: user.email,
-      fullName: user.fullName,
-      token: verificationToken,
-    });
-
-    await prisma.notification.create({
-      data: {
+      await auditService.log({
         userId: user.id,
-        type: "system",
-        message: "Welcome to ClinBridge. Verification email sent to your inbox.",
-      },
-    });
+        role: user.role,
+        actionType: "register",
+        details: `New ${role} account registered`,
+        ipAddress,
+      });
 
-    return { user: sanitize(user) };
+      await sendVerificationEmail({
+        to: user.email,
+        fullName: user.fullName,
+        token: verificationToken,
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          type: "system",
+          message: "Welcome to ClinBridge. Verification email sent to your inbox.",
+        },
+      });
+
+      return { user: sanitize(user) };
+    } catch (error) {
+      if (user?.id) {
+        await prisma.notification.deleteMany({ where: { userId: user.id } });
+        await prisma.activityLog.deleteMany({ where: { userId: user.id } });
+        await prisma.user.delete({ where: { id: user.id } });
+      }
+      throw error;
+    }
   },
 
   async verifyEmail({ token, ipAddress }) {
