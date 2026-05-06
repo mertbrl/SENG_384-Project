@@ -91,32 +91,6 @@ router.patch("/users/:id/suspend", async (req, res, next) => {
   }
 });
 
-router.patch("/users/:id/verify", async (req, res, next) => {
-  try {
-    const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data: {
-        verified: true,
-        emailVerificationToken: null,
-        emailVerificationExpiresAt: null,
-      },
-      include: { country: true, city: true },
-    });
-    await prisma.activityLog.create({
-      data: {
-        userId: req.user.id,
-        role: "admin",
-        actionType: "admin_verify_user",
-        targetEntity: req.params.id,
-        details: "User verified by admin",
-      },
-    });
-    success(res, withLocation(user));
-  } catch (err) {
-    next(err);
-  }
-});
-
 router.get("/posts", async (req, res, next) => {
   try {
     const { status, city, domain, search } = req.query;

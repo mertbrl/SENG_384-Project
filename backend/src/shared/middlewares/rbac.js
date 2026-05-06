@@ -18,6 +18,7 @@ async function authenticate(req, _res, next) {
       include: { country: true, city: true },
     });
     if (!user) throw new AuthError("User account no longer exists.");
+    if (!user.verified) throw new ForbiddenError("Please verify your email before using the platform.");
     if (user.suspended) throw new ForbiddenError("This account has been suspended.");
 
     req.user = withLocation(user);

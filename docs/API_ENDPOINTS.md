@@ -66,7 +66,6 @@
 - `GET /api/admin/users`
 - `GET /api/admin/users/:id`
 - `PATCH /api/admin/users/:id/suspend`
-- `PATCH /api/admin/users/:id/verify`
 - `GET /api/admin/posts`
 - `PATCH /api/admin/posts/:id/status`
 - `DELETE /api/admin/posts/:id`

@@ -1232,16 +1232,6 @@ function App() {
     }
   }
 
-  async function verifyUser(id) {
-    setError("");
-    try {
-      await authorized(`/admin/users/${id}/verify`, { method: "PATCH" });
-      await refreshAll();
-    } catch (caughtError) {
-      setError(caughtError.message);
-    }
-  }
-
   async function removePostAsAdmin(id) {
     setError("");
     try {
@@ -2186,7 +2176,7 @@ function App() {
               <div className="panel-header admin-panel-head">
                 <div>
                   <h2>Users</h2>
-                  <p>Verify institutional accounts and suspend if needed.</p>
+                  <p>Institutional accounts are verified only through email confirmation. Use suspend controls for moderation.</p>
                 </div>
               </div>
               <div className="table-wrap users-table-wrap admin-table-wrap">
@@ -2201,7 +2191,6 @@ function App() {
                         <td>{adminUser.city}</td>
                         <td>{adminUser.verified ? "Verified" : "Pending"} {adminUser.suspended ? "Suspended" : ""}</td>
                         <td>
-                          <button className="ghost-button" onClick={() => verifyUser(adminUser.id)}>Verify</button>
                           <button className="ghost-button" onClick={() => suspendUser(adminUser.id, !adminUser.suspended)}>{adminUser.suspended ? "Unsuspend" : "Suspend"}</button>
                         </td>
                       </tr>
