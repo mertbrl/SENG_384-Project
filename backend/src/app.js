@@ -29,6 +29,13 @@ app.use(express.json({ limit: "1mb" }));
 app.use(rateLimiter);
 app.use(requestLogger);
 
+app.get("/", (_req, res) => {
+  res.json({
+    status: "OK",
+    message: "API is running",
+  });
+});
+
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "OK",
