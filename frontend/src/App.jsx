@@ -582,6 +582,14 @@ function App() {
   const [authInlineError, setAuthInlineError] = useState("");
   const [registerInlineError, setRegisterInlineError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem("healthai-dark") === "1"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    try { localStorage.setItem("healthai-dark", darkMode ? "1" : "0"); } catch { /* noop */ }
+  }, [darkMode]);
 
   const token = session?.token || "";
   const user = session?.user || null;
@@ -1422,9 +1430,15 @@ function App() {
       <aside className="sidebar dash-sidebar">
         <div className="dash-brand">
           <div className="dash-brand-mark" aria-hidden>
-            <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-              <path d="M11 2v18M2 11h18" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
-              <circle cx="11" cy="11" r="4.2" stroke="#fff" strokeWidth="1.8" />
+            {/* Health AI pulse icon */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M2 12h4l2.5-7 3 14 3-9 2 4 1.5-2H22"
+                stroke="rgba(255,255,255,0.9)"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </div>
           <div>
@@ -1526,6 +1540,28 @@ function App() {
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </button>
+            {/* Dark mode toggle — top right, next to notifications */}
+            <button
+              type="button"
+              className="dash-icon-btn dash-dark-toggle-topbar"
+              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={() => setDarkMode((d) => !d)}
+            >
+              {darkMode ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
         <header className="topbar dash-topbar">
@@ -1613,48 +1649,94 @@ function App() {
                     <div className="panel-header">
                       <div>
                         <h2>Posts</h2>
-                        <p>Cards in a board layout — open one for full details and actions.</p>
+                        <p>Open a card for full details and actions.</p>
                       </div>
                       <button type="button" onClick={() => { resetComposer(); setActiveTab("composer"); }}>New post</button>
                     </div>
-                    {ownScoredPosts.length ? (
-                      <div className="browse-owned-summary">
-                        <strong>Your posts appear first.</strong>
-                        <span>{ownScoredPosts.length} announcement{ownScoredPosts.length > 1 ? "s" : ""} belong to your account.</span>
+
+                    {/* ── My Posts section ── */}
+                    {ownScoredPosts.length > 0 && (
+                      <div className="posts-section posts-section--mine">
+                        <div className="posts-section-header">
+                          <span className="posts-section-icon" aria-hidden>✦</span>
+                          <div>
+                            <h3 className="posts-section-title">My Posts</h3>
+                            <p className="posts-section-sub">{ownScoredPosts.length} announcement{ownScoredPosts.length > 1 ? "s" : ""} you manage</p>
+                          </div>
+                        </div>
+                        <div className="card-grid browse-board-grid">
+                          {ownScoredPosts.map((post) => (
+                            <article
+                              className={`post-card post-card--browse post-card--own ${selectedPost?.id === post.id ? "selected" : ""}`}
+                              key={post.id}
+                              onClick={() => setSelectedPost(post)}
+                            >
+                              <div className="card-topline">
+                                <span className="card-domain-tag">{post.workingDomain || "—"}</span>
+                                <div className="card-topline-badges">
+                                  <StatusBadge status={post.status} />
+                                </div>
+                              </div>
+                              <h3 className="post-card-title">{post.title}</h3>
+                              <p className="post-card-excerpt">{post.shortExplanation || post.description || "No summary provided."}</p>
+                              <div className="post-card-footer">
+                                <div className="post-card-meta">
+                                  <span className="meta-chip meta-chip--location">📍 {post.city}, {post.country}</span>
+                                  <span className="meta-chip">{labelFor(projectStageOptions, post.projectStage)}</span>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
                       </div>
-                    ) : null}
-                    <div className="card-grid browse-board-grid">
-                      {orderedScoredPosts.map((post) => (
-                        <article
-                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""} ${post.userId === user.id ? "is-own-post" : ""}`}
-                          key={post.id}
-                          onClick={() => setSelectedPost(post)}
-                        >
-                          {post.userId === user.id ? <span className="own-post-banner">Your Post</span> : null}
-                          <div className="card-topline">
-                            <span>{post.workingDomain}</span>
-                            <div className="card-topline-badges">
-                              <StatusBadge status={post.status} />
-                            </div>
+                    )}
+
+                    {/* ── Community Posts section ── */}
+                    {otherScoredPosts.length > 0 && (
+                      <div className="posts-section posts-section--community">
+                        <div className="posts-section-header">
+                          <span className="posts-section-icon" aria-hidden>🌐</span>
+                          <div>
+                            <h3 className="posts-section-title">Community Posts</h3>
+                            <p className="posts-section-sub">{otherScoredPosts.length} collaboration opportunit{otherScoredPosts.length > 1 ? "ies" : "y"} from the platform</p>
                           </div>
-                          <h3>{post.title}</h3>
-                          <p>{post.shortExplanation || post.description || "No summary provided."}</p>
-                          <div className="meta-list">
-                            <span>{post.requiredExpertise}</span>
-                            <span>{post.city}, {post.country}</span>
-                            <span>{labelFor(projectStageOptions, post.projectStage)}</span>
-                            <span className="score-badge" title={post.matchScoreLines?.join("\n")}>
-                              Match {post.healthAiMatchScore}/100
-                            </span>
-                            {post.cityMatch ? <span className="meta-pill-local">Same city</span> : null}
-                          </div>
-                          <p className="post-card-match-hint">
-                            {(post.matchIsOwnPost ? post.matchScoreLines.slice(1) : post.matchScoreLines).slice(0, 3).join(" · ")}
-                          </p>
-                        </article>
-                      ))}
-                      {!posts.length && <EmptyState title="No posts found" text="Adjust filters or create the first opportunity." />}
-                    </div>
+                        </div>
+                        <div className="card-grid browse-board-grid">
+                          {otherScoredPosts.map((post) => (
+                            <article
+                              className={`post-card post-card--browse post-card--community ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""}`}
+                              key={post.id}
+                              onClick={() => setSelectedPost(post)}
+                            >
+                              <div className="card-topline">
+                                <span className="card-domain-tag">{post.workingDomain || "—"}</span>
+                                <div className="card-topline-badges">
+                                  <StatusBadge status={post.status} />
+                                </div>
+                              </div>
+                              <h3 className="post-card-title">{post.title}</h3>
+                              <p className="post-card-excerpt">{post.shortExplanation || post.description || "No summary provided."}</p>
+                              <div className="post-card-owner-row">
+                                <span className="post-card-owner-avatar" aria-hidden>{userInitials(post.owner?.fullName)}</span>
+                                <span className="post-card-owner-name">{post.owner?.fullName || "Unknown"}</span>
+                              </div>
+                              <div className="post-card-footer">
+                                <div className="post-card-meta">
+                                  <span className="meta-chip meta-chip--location">📍 {post.city}, {post.country}</span>
+                                  <span className="meta-chip">{labelFor(projectStageOptions, post.projectStage)}</span>
+                                  {post.cityMatch ? <span className="meta-chip meta-chip--local">✓ Same city</span> : null}
+                                </div>
+                                <span className="score-badge" title={post.matchScoreLines?.join("\n")}>
+                                  {post.healthAiMatchScore}/100
+                                </span>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!posts.length && <EmptyState title="No posts found" text="Adjust filters or create the first opportunity." />}
                   </div>
                 </section>
                 {selectedPost && (
@@ -1949,40 +2031,61 @@ function App() {
 
         {activeTab === "interests" && (
           <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Interests</h2>
-                <p>Handle first-contact messages before creating a meeting request.</p>
-              </div>
+            <div className="interests-section-header">
+              <h2>Interests</h2>
+              <p>Handle first-contact messages before creating a meeting request.</p>
             </div>
-            <div className="card-grid">
+            <div className="interests-grid">
               {interests.map((interest) => {
                 const ownerView = interest.ownerId === user.id;
                 const requesterView = interest.requesterId === user.id;
                 const meetingDraftForInterest = interestMeetingDrafts[interest.id] || {};
                 const hasSlots = Boolean(interest.timeSlots?.length);
                 return (
-                  <article className="meeting-card" key={interest.id}>
-                    <div className="card-topline">
-                      <span>{interest.post?.workingDomain}</span>
+                  <article className="interest-card" key={interest.id} data-status={interest.status}>
+                    {/* Header */}
+                    <div className="interest-card-header">
+                      <div className="interest-card-domain">{interest.post?.workingDomain || "—"}</div>
                       <StatusBadge status={interest.status} />
                     </div>
-                    <h3>{interest.post?.title}</h3>
-                    <p>{interest.message}</p>
-                    <div className="meta-list">
-                      <span>Requester: {interest.requester?.fullName}</span>
-                      <span>Owner: {interest.owner?.fullName}</span>
-                      <span>{interest.post?.confidentialityLevel?.replaceAll("_", " ")}</span>
+
+                    {/* Title + message */}
+                    <div>
+                      <h3 className="interest-card-title">{interest.post?.title}</h3>
+                      {interest.message && (
+                        <p className="interest-card-message">{interest.message}</p>
+                      )}
                     </div>
+
+                    {/* People row */}
+                    <div className="interest-people-row">
+                      <span className="interest-person-pill interest-person-pill--requester">
+                        <span className="interest-person-avatar">{userInitials(interest.requester?.fullName)}</span>
+                        {interest.requester?.fullName}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>→</span>
+                      <span className="interest-person-pill interest-person-pill--owner">
+                        <span className="interest-person-avatar">{userInitials(interest.owner?.fullName)}</span>
+                        {interest.owner?.fullName}
+                      </span>
+                      <span className="interest-person-pill interest-person-pill--conf">
+                        {interest.post?.confidentialityLevel?.replaceAll("_", " ")}
+                      </span>
+                    </div>
+
+                    {/* Time slots */}
                     {hasSlots && (
-                      <div className="slot-list">
+                      <div className="interest-slots-list">
                         {interest.timeSlots.map((slot) => (
-                          <div className="slot-option" key={slot.id}>
+                          <div className="interest-slot-item" key={slot.id}>
+                            <span className="interest-slot-icon">🕐</span>
                             <span>{formatDate(slot.proposedAt)}</span>
                           </div>
                         ))}
                       </div>
                     )}
+
+                    {/* Owner: propose time slots */}
                     {ownerView && (interest.status === "pending" || interest.status === "acknowledged") && (
                       <div className="meeting-form">
                         <InterestSlotPlanner
@@ -1992,6 +2095,8 @@ function App() {
                         />
                       </div>
                     )}
+
+                    {/* Requester: choose slot */}
                     {requesterView && interest.status === "acknowledged" && hasSlots && (
                       <div className="meeting-form">
                         <SelectField
@@ -2022,7 +2127,9 @@ function App() {
                         </button>
                       </div>
                     )}
-                    <div className="card-actions">
+
+                    {/* Actions */}
+                    <div className="interest-card-actions">
                       {requesterView && interest.status === "withdrawn" && (
                         <button type="button" onClick={() => reinstateInterest(interest)}>Reinstate interest</button>
                       )}
@@ -2040,44 +2147,79 @@ function App() {
 
         {activeTab === "meetings" && (
           <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Meetings</h2>
-                <p>Accept selected slots, decline unsuitable requests or confirm a slot when more than one option is still open. After scheduling, either side can paste a Zoom / Teams / Meet link so both can join.</p>
-              </div>
+            <div className="meetings-section-header">
+              <h2>Meetings</h2>
+              <p>Accept selected slots, decline unsuitable requests or confirm a slot when more than one option is still open. After scheduling, either side can paste a Zoom / Teams / Meet link so both can join.</p>
             </div>
-            <div className="card-grid">
+            <div className="meetings-grid">
               {meetings.map((meeting) => (
-                <article className="meeting-card" key={meeting.id}>
-                  <div className="card-topline">
-                    <span>{meeting.post?.workingDomain}</span>
-                    <div className="card-topline-badges">
+                <article className="meeting-card-v2" key={meeting.id}>
+                  {/* Header */}
+                  <div className="meeting-card-v2-header">
+                    <span className="meeting-card-v2-domain">{meeting.post?.workingDomain || "—"}</span>
+                    <div className="meeting-card-v2-badges">
                       <StatusBadge status={meeting.status} />
-                      {isMeetingSlotMissed(meeting) ? <span className="status-badge status-missed-meeting">Missed meeting</span> : null}
+                      {isMeetingSlotMissed(meeting) ? <span className="status-badge status-missed-meeting">Missed</span> : null}
                     </div>
                   </div>
-                  <h3>{meeting.post?.title}</h3>
-                  <p>{meeting.message || "No message provided."}</p>
-                  <div className="meta-list">
-                    <span>Requester: {meeting.requester?.fullName}</span>
-                    <span>Owner: {meeting.owner?.fullName}</span>
+
+                  {/* Title + message */}
+                  <div>
+                    <h3 className="meeting-card-v2-title">{meeting.post?.title}</h3>
+                    {(meeting.message && meeting.message !== "No message provided.") && (
+                      <p className="meeting-card-v2-message">{meeting.message}</p>
+                    )}
                   </div>
-                  <div className="slot-list">
-                    {(meeting.timeSlots || []).map((slot) => (
-                      <div className="slot-option" key={slot.id}>
-                        <span>{formatDate(slot.proposedAt)}</span>
-                        {meeting.status === "accepted" && <button className="ghost-button" onClick={() => confirmSlot(meeting, slot.id)}>Confirm</button>}
-                      </div>
-                    ))}
+
+                  {/* People row */}
+                  <div className="meeting-people-row">
+                    <span className="meeting-person-pill meeting-person-pill--req">
+                      👤 {meeting.requester?.fullName}
+                    </span>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>→</span>
+                    <span className="meeting-person-pill meeting-person-pill--own">
+                      🏥 {meeting.owner?.fullName}
+                    </span>
                   </div>
-                  {meeting.selectedSlot && (
-                    <div className="meeting-slot-block">
-                      <p className="meeting-selected-slot">Selected slot: {formatDate(meeting.selectedSlot)}</p>
-                      {isMeetingSlotMissed(meeting) ? (
-                        <p className="meeting-missed-note">This meeting window has passed. Reschedule by agreeing on a new time outside the app or start a new interest flow if the post is still open.</p>
-                      ) : null}
+
+                  {/* Multiple time slots (when accepted status still choosing) */}
+                  {(meeting.timeSlots?.length > 0) && (
+                    <div className="interest-slots-list">
+                      {meeting.timeSlots.map((slot) => (
+                        <div className="interest-slot-item" key={slot.id}>
+                          <span className="interest-slot-icon">🕐</span>
+                          <span>{formatDate(slot.proposedAt)}</span>
+                          {meeting.status === "accepted" && (
+                            <button
+                              style={{ marginLeft: "auto", padding: "0.2rem 0.65rem", fontSize: "0.78rem" }}
+                              className="ghost-button"
+                              onClick={() => confirmSlot(meeting, slot.id)}
+                            >
+                              Confirm
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
+
+                  {/* Selected slot callout */}
+                  {meeting.selectedSlot && (
+                    <div className="meeting-selected-slot-box">
+                      <span className="meeting-selected-slot-icon">📅</span>
+                      <div>
+                        <div className="meeting-selected-slot-label">Selected slot</div>
+                        <div className="meeting-selected-slot-time">{formatDate(meeting.selectedSlot)}</div>
+                        {isMeetingSlotMissed(meeting) && (
+                          <p style={{ margin: "0.35rem 0 0", fontSize: "0.78rem", color: "#64748b", lineHeight: 1.4 }}>
+                            This meeting window has passed. Reschedule or start a new interest flow.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video link section */}
                   {(meeting.status === "pending" || meeting.status === "accepted" || meeting.status === "scheduled") && (
                     <div className="meeting-join-section">
                       {meeting.joinUrl ? (
@@ -2109,10 +2251,18 @@ function App() {
                       )}
                     </div>
                   )}
-                  <div className="card-actions">
-                    {meeting.ownerId === user.id && meeting.status === "pending" && <button onClick={() => meetingAction(meeting, "accept")}>{meeting.selectedSlot ? "Accept and schedule" : "Accept"}</button>}
-                    {meeting.ownerId === user.id && meeting.status === "pending" && <button className="ghost-button" onClick={() => meetingAction(meeting, "decline")}>Decline</button>}
-                    {meeting.requesterId === user.id && meeting.status === "pending" && <button className="ghost-button" onClick={() => meetingAction(meeting, "cancel")}>Cancel</button>}
+
+                  {/* Actions */}
+                  <div className="meeting-card-v2-actions">
+                    {meeting.ownerId === user.id && meeting.status === "pending" && (
+                      <button onClick={() => meetingAction(meeting, "accept")}>{meeting.selectedSlot ? "Accept and schedule" : "Accept"}</button>
+                    )}
+                    {meeting.ownerId === user.id && meeting.status === "pending" && (
+                      <button className="ghost-button" onClick={() => meetingAction(meeting, "decline")}>Decline</button>
+                    )}
+                    {meeting.requesterId === user.id && meeting.status === "pending" && (
+                      <button className="ghost-button" onClick={() => meetingAction(meeting, "cancel")}>Cancel</button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -2122,23 +2272,46 @@ function App() {
         )}
 
         {activeTab === "notifications" && (
-          <section className="panel">
-            <div className="panel-header">
+          <section className="panel notif-panel">
+            <div className="notif-panel-header">
               <div>
-                <h2>Notifications</h2>
-                <p>System, verification and meeting updates.</p>
+                <h2 className="notif-panel-title">Notifications</h2>
+                <p className="notif-panel-sub">{unreadCount > 0 ? `${unreadCount} unread` : "All caught up"} — system, verification and meeting updates.</p>
               </div>
-              <button onClick={readAllNotifications}>Mark all read</button>
+              <button className="ghost-button" onClick={readAllNotifications}>Mark all read</button>
             </div>
-            <div className="notification-list">
-              {notifications.map((notification) => (
-                <article className={`notification-item ${notification.read ? "" : "unread"}`} key={notification.id}>
-                  <strong>{notification.type.replaceAll("_", " ")}</strong>
-                  <p>{notification.message}</p>
-                  <small>{formatDate(notification.createdAt)}</small>
-                  <button className="ghost-button" onClick={() => deleteNotification(notification.id)}>Delete</button>
-                </article>
-              ))}
+            <div className="notif-feed">
+              {notifications.map((notification) => {
+                const typeKey = notification.type || "";
+                const typeLabel = typeKey.replaceAll("_", " ");
+                const typeIcon = typeKey.includes("meeting") ? "📅" :
+                  typeKey.includes("interest") ? "💬" :
+                  typeKey.includes("verif") ? "✅" :
+                  typeKey.includes("partner") ? "🤝" :
+                  typeKey.includes("security") || typeKey.includes("login") ? "🔐" : "🔔";
+                const typeColor = typeKey.includes("meeting") ? "notif-item--meeting" :
+                  typeKey.includes("interest") ? "notif-item--interest" :
+                  typeKey.includes("verif") ? "notif-item--verify" : "notif-item--default";
+                return (
+                  <article
+                    className={`notif-item ${typeColor} ${notification.read ? "" : "notif-item--unread"}`}
+                    key={notification.id}
+                  >
+                    <div className="notif-item-icon" aria-hidden>{typeIcon}</div>
+                    <div className="notif-item-body">
+                      <div className="notif-item-header">
+                        <span className="notif-item-type">{typeLabel}</span>
+                        {!notification.read && <span className="notif-unread-dot" aria-hidden />}
+                      </div>
+                      <p className="notif-item-message">{notification.message}</p>
+                      <div className="notif-item-footer">
+                        <time className="notif-item-time">{formatDate(notification.createdAt)}</time>
+                        <button className="notif-delete-btn" onClick={() => deleteNotification(notification.id)}>Delete</button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
               {!notifications.length && <EmptyState title="No notifications" text="You are all caught up." />}
             </div>
           </section>
