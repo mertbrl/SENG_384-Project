@@ -3,6 +3,7 @@ import toast, { Toaster } from "react-hot-toast";
 import ActivityChart from "./ActivityChart.jsx";
 import DomainDonutChart from "./DomainDonutChart.jsx";
 import { InterestSlotPlanner } from "./InterestSlotPlanner.jsx";
+import NDAModal from "./NDAModal.jsx";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -1013,13 +1014,13 @@ function App() {
     }
   }
 
-  async function expressInterest() {
+  async function expressInterest({ message, ndaAccepted }) {
     if (!selectedPost) return;
-    if (!String(interestDraft.message || "").trim()) {
+    if (!String(message || "").trim()) {
       setError("Please add a short first-contact message.");
       return;
     }
-    if (!ndaAcceptedForInterest) {
+    if (!ndaAccepted) {
       setError("Please accept the NDA terms to continue.");
       return;
     }
@@ -1028,10 +1029,9 @@ function App() {
     try {
       await authorized(`/posts/${selectedPost.id}/interests`, {
         method: "POST",
-        body: { message: interestDraft.message },
+        body: { message: String(message).trim() },
       });
       setInterestDraft({ message: "" });
-      setNdaAcceptedForInterest(false);
       setShowNdaModal(false);
       setActiveTab("interests");
       setMessage("Interest expressed. The post owner can now propose time slots.");
@@ -2377,6 +2377,15 @@ function App() {
         )}
 
         {showNdaModal && (
+          <NDAModal
+            post={selectedPost}
+            initialMessage={interestDraft.message}
+            onClose={() => setShowNdaModal(false)}
+            onSend={expressInterest}
+          />
+        )}
+
+        {false && showNdaModal && (
           <div
             className="modal-backdrop"
             role="presentation"
