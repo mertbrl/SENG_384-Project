@@ -17,6 +17,7 @@ const adminRouter = require("./modules/admin/admin.routes");
 const locationsRouter = require("./modules/locations/locations.routes");
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(
   cors({
