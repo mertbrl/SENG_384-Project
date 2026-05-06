@@ -617,6 +617,21 @@ function App() {
     [posts, user]
   );
 
+  const ownScoredPosts = useMemo(
+    () => scoredPosts.filter((post) => post.userId === user?.id),
+    [scoredPosts, user]
+  );
+
+  const otherScoredPosts = useMemo(
+    () => scoredPosts.filter((post) => post.userId !== user?.id),
+    [scoredPosts, user]
+  );
+
+  const orderedScoredPosts = useMemo(
+    () => [...ownScoredPosts, ...otherScoredPosts],
+    [ownScoredPosts, otherScoredPosts]
+  );
+
   const stats = useMemo(() => {
     const activePosts = posts.filter((post) => post.status === "active").length;
     const ownPosts = user ? posts.filter((post) => post.userId === user.id).length : 0;
@@ -1602,16 +1617,25 @@ function App() {
                       </div>
                       <button type="button" onClick={() => { resetComposer(); setActiveTab("composer"); }}>New post</button>
                     </div>
+                    {ownScoredPosts.length ? (
+                      <div className="browse-owned-summary">
+                        <strong>Your posts appear first.</strong>
+                        <span>{ownScoredPosts.length} announcement{ownScoredPosts.length > 1 ? "s" : ""} belong to your account.</span>
+                      </div>
+                    ) : null}
                     <div className="card-grid browse-board-grid">
-                      {scoredPosts.map((post) => (
+                      {orderedScoredPosts.map((post) => (
                         <article
-                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""}`}
+                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""} ${post.userId === user.id ? "post-card--own" : ""}`}
                           key={post.id}
                           onClick={() => setSelectedPost(post)}
                         >
                           <div className="card-topline">
                             <span>{post.workingDomain}</span>
-                            <StatusBadge status={post.status} />
+                            <div className="card-topline-badges">
+                              {post.userId === user.id ? <span className="own-post-badge">Your post</span> : null}
+                              <StatusBadge status={post.status} />
+                            </div>
                           </div>
                           <h3>{post.title}</h3>
                           <p>{post.shortExplanation || post.description || "No summary provided."}</p>
