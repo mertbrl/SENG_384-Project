@@ -91,6 +91,12 @@ const studioSteps = [
   { title: "Safety", caption: "Confidentiality and publish settings" },
 ];
 
+const publishRequiredFields = [
+  { key: "title", label: "Title", step: 0 },
+  { key: "workingDomain", label: "Working domain", step: 0 },
+  { key: "requiredExpertise", label: "Required expertise", step: 0 },
+];
+
 function unwrap(payload) {
   if (payload && Object.prototype.hasOwnProperty.call(payload, "data")) {
     return payload.data;
@@ -211,6 +217,10 @@ function validateRegisterForm(registerForm) {
     return "Please agree to the Health AI Terms of Service and Privacy Policy to create an account.";
   }
   return "";
+}
+
+function getMissingPublishFields(postForm) {
+  return publishRequiredFields.filter((field) => !String(postForm[field.key] || "").trim());
 }
 
 /**
@@ -560,6 +570,7 @@ function App() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileForm, setProfileForm] = useState(emptyProfile);
+  const [publishValidationModal, setPublishValidationModal] = useState([]);
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminPosts, setAdminPosts] = useState([]);
@@ -942,6 +953,12 @@ function App() {
   }
 
   async function savePost(nextStatus) {
+    const missingFields = nextStatus === "active" ? getMissingPublishFields(postForm) : [];
+    if (missingFields.length) {
+      setPublishValidationModal(missingFields);
+      setComposerStep(missingFields[0].step);
+      return;
+    }
     setLoading(true);
     setError("");
     setMessage("");
@@ -1803,6 +1820,57 @@ function App() {
               </div>
             </div>
           </section>
+        )}
+
+        {!!publishValidationModal.length && (
+          <div
+            className="modal-backdrop"
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setPublishValidationModal([]);
+              }
+            }}
+          >
+            <div
+              className="validation-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="publish-validation-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="validation-modal-header">
+                <span className="validation-modal-icon" aria-hidden>⚠</span>
+                <div>
+                  <h2 id="publish-validation-title">Complete these fields before publishing</h2>
+                  <p>We found a few required items missing from your post.</p>
+                </div>
+              </div>
+              <div className="validation-modal-rule" />
+              <ul className="validation-modal-list">
+                {publishValidationModal.map((field) => (
+                  <li key={field.key}>
+                    <strong>{field.label}</strong>
+                    <span>Step {field.step + 1}: {studioSteps[field.step].title}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="validation-modal-actions">
+                <button type="button" className="ghost-button" onClick={() => setPublishValidationModal([])}>
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComposerStep(publishValidationModal[0]?.step ?? 0);
+                    setPublishValidationModal([]);
+                  }}
+                >
+                  Take me there
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === "interests" && (
