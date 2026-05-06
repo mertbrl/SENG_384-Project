@@ -1626,14 +1626,14 @@ function App() {
                     <div className="card-grid browse-board-grid">
                       {orderedScoredPosts.map((post) => (
                         <article
-                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""} ${post.userId === user.id ? "post-card--own" : ""}`}
+                          className={`post-card post-card--browse ${selectedPost?.id === post.id ? "selected" : ""} ${post.cityMatch ? "city-match" : ""} ${post.userId === user.id ? "is-own-post" : ""}`}
                           key={post.id}
                           onClick={() => setSelectedPost(post)}
                         >
+                          {post.userId === user.id ? <span className="own-post-banner">Your Post</span> : null}
                           <div className="card-topline">
                             <span>{post.workingDomain}</span>
                             <div className="card-topline-badges">
-                              {post.userId === user.id ? <span className="own-post-badge">Your post</span> : null}
                               <StatusBadge status={post.status} />
                             </div>
                           </div>
