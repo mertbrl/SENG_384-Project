@@ -501,8 +501,8 @@ function EmptyState({ title, text }) {
 
 function Field({ label, value, onChange, type = "text", placeholder = "" }) {
   return (
-    <label>
-      {label}
+    <label className="auth-field auth-field--plain">
+      <span>{label}</span>
       <input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
@@ -519,8 +519,8 @@ function TextAreaField({ label, value, onChange, placeholder = "" }) {
 
 function SelectField({ label, value, onChange, options }) {
   return (
-    <label>
-      {label}
+    <label className="auth-field auth-field--plain">
+      <span>{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>

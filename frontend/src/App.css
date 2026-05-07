@@ -5518,6 +5518,28 @@ html.dark .admin-console .admin-chart-panel .chart-box {
   font-weight: 400;
 }
 
+.auth-field--plain input,
+.auth-field--plain select {
+  width: 100%;
+  min-height: 3.15rem;
+  padding: 0.78rem 0.9rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.75rem;
+  font: inherit;
+  font-size: 0.93rem;
+  background: #f8fafc;
+  color: #0a1628;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.auth-field--plain input:focus,
+.auth-field--plain select:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.14);
+  outline: none;
+}
+
 /* Submit button */
 .form-stack.auth-form > button[type="submit"] {
   width: 100%;
@@ -5679,7 +5701,8 @@ html.dark .admin-console .admin-chart-panel .chart-box {
 /* ── Register form grid ──────────────────────────────────────── */
 .form-stack.auth-form .form-grid {
   grid-template-columns: 1fr 1fr;
-  gap: 0;
+  gap: 0 1rem;
+  align-items: start;
 }
 
 .form-stack.auth-form .form-grid label {
@@ -5751,7 +5774,21 @@ html.dark .auth-input-wrap input {
   color: #e6edf3 !important;
 }
 
+html.dark .auth-field--plain input,
+html.dark .auth-field--plain select {
+  background: #161b22 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
 html.dark .auth-input-wrap input:focus {
+  border-color: #58a6ff !important;
+  background: #1c2128 !important;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15) !important;
+}
+
+html.dark .auth-field--plain input:focus,
+html.dark .auth-field--plain select:focus {
   border-color: #58a6ff !important;
   background: #1c2128 !important;
   box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15) !important;
