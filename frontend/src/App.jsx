@@ -1302,25 +1302,25 @@ function App() {
         </section>
 
         <section className="auth-panel clean-auth-panel">
-          <div className="auth-panel-brand" aria-label="Studio">
-            <small className="brand-mark-tagline">Pi-thon Dynamics</small>
-            <button
-              type="button"
-              className="auth-theme-toggle"
-              onClick={() => {
-                const isDark = document.documentElement.classList.toggle("dark");
-                localStorage.setItem("theme", isDark ? "dark" : "light");
-              }}
-              title="Toggle dark mode"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            </button>
-          </div>
+          {/* Dark mode toggle — top right corner */}
+          <button
+            type="button"
+            className="auth-theme-toggle auth-theme-toggle--corner"
+            onClick={() => {
+              const isDark = document.documentElement.classList.toggle("dark");
+              localStorage.setItem("theme", isDark ? "dark" : "light");
+            }}
+            title="Toggle dark mode"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+
           <div className="auth-panel-stack">
           {view === "login" && (
             <form className="form-stack auth-form" onSubmit={handleLogin} autoComplete="off">
+              <small className="auth-brand-label">Pi-thon Dynamics</small>
               <h2>Welcome to Health AI</h2>
               <p className="auth-subtitle">Sign in to continue</p>
               <AuthField
@@ -1459,7 +1459,7 @@ function App() {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
               <path
                 d="M2 12h4l2.5-7 3 14 3-9 2 4 1.5-2H22"
-                stroke="currentColor"
+                stroke="rgba(255,255,255,0.92)"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1476,7 +1476,7 @@ function App() {
           <p className="nav-group-label">Main</p>
           <button
             type="button"
-            className={activeTab === "feed" && feedSection === "overview" ? "active" : ""}
+            className={`nav-link${activeTab === "feed" && feedSection === "overview" ? " active" : ""}`}
             onClick={() => {
               setActiveTab("feed");
               setFeedSection("overview");
@@ -1486,7 +1486,7 @@ function App() {
           </button>
           <button
             type="button"
-            className={activeTab === "feed" && feedSection === "browse" ? "active" : ""}
+            className={`nav-link${activeTab === "feed" && feedSection === "browse" ? " active" : ""}`}
             onClick={() => {
               setActiveTab("feed");
               setFeedSection("browse");
@@ -1495,9 +1495,9 @@ function App() {
             Browse posts
             <span className="nav-badge">{posts.length}</span>
           </button>
-          <button type="button" className={activeTab === "interests" ? "active" : ""} onClick={() => setActiveTab("interests")}>Interests</button>
-          <button type="button" className={activeTab === "composer" ? "active" : ""} onClick={() => setActiveTab("composer")}>Announcement studio</button>
-          <button type="button" className={activeTab === "meetings" ? "active" : ""} onClick={() => setActiveTab("meetings")}>
+          <button type="button" className={`nav-link${activeTab === "interests" ? " active" : ""}`} onClick={() => setActiveTab("interests")}>Interests</button>
+          <button type="button" className={`nav-link${activeTab === "composer" ? " active" : ""}`} onClick={() => setActiveTab("composer")}>Announcement studio</button>
+          <button type="button" className={`nav-link${activeTab === "meetings" ? " active" : ""}`} onClick={() => setActiveTab("meetings")}>
             Meetings
             {stats.pendingMeetings > 0 ? <span className="nav-badge">{stats.pendingMeetings}</span> : null}
           </button>
@@ -1505,7 +1505,7 @@ function App() {
           {user.role === "admin" && (
             <>
               <p className="nav-group-label">Admin</p>
-              <button type="button" className={activeTab === "admin" ? "active" : ""} onClick={() => setActiveTab("admin")}>Users, posts &amp; audit logs</button>
+              <button type="button" className={`nav-link${activeTab === "admin" ? " active" : ""}`} onClick={() => setActiveTab("admin")}>Users, posts &amp; audit logs</button>
             </>
           )}
         </nav>

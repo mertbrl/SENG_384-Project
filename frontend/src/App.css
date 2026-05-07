@@ -1977,11 +1977,13 @@ td {
 /* Studio mark: top-right of white auth panel (above Welcome) */
 .auth-panel-brand {
   flex-shrink: 0;
-  align-self: flex-end;
+  align-self: center;
   width: 100%;
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.5rem;
   padding: 0.15rem 0 0.1rem;
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   animation: auth-fade-rise 0.75s ease-out 0.08s both;
 }
 
@@ -1989,12 +1991,13 @@ td {
   display: inline-block;
   margin: 0;
   padding: 0;
-  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: clamp(0.85rem, 1.6vw, 1rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   line-height: 1.2;
-  color: #054a91;
-  text-align: right;
+  color: #64748b;
+  text-align: center;
 }
 
 .visual-overlay-text {
@@ -2276,11 +2279,11 @@ a.text-link {
 }
 
 .demo-credentials {
-  margin-top: 0.4rem;
-  padding: 0.8rem;
-  border: 1px solid #d9e5f2;
-  border-radius: 0.8rem;
-  background: #f8fbff;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e8eef5;
+  background: transparent;
+  border-radius: 0;
   font-size: 0.82rem;
 }
 
@@ -2443,10 +2446,11 @@ a.text-link {
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: #94a3b8;
 }
 
-.dash-sidebar-nav > button {
+.dash-sidebar-nav > button,
+.dash-sidebar-nav > .nav-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2455,7 +2459,7 @@ a.text-link {
   border-radius: 8px;
   padding: 0.5rem 0.65rem;
   background: transparent;
-  color: rgba(255,255,255,0.65);
+  color: #475569;
   font-weight: 500;
   font-size: 0.875rem;
   border: none;
@@ -2463,16 +2467,18 @@ a.text-link {
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
-.dash-sidebar-nav > button:hover {
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.9);
-  border-left-color: rgba(255,255,255,0.15);
+.dash-sidebar-nav > button:hover,
+.dash-sidebar-nav > .nav-link:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: #1e293b;
+  border-left-color: rgba(15, 23, 42, 0.12);
 }
 
-.dash-sidebar-nav > button.active {
-  background: rgba(255,255,255,0.1);
-  color: #ffffff;
-  border-left-color: #f17300;
+.dash-sidebar-nav > button.active,
+.dash-sidebar-nav > .nav-link.active {
+  background: rgba(79, 70, 229, 0.08);
+  color: #4338ca;
+  border-left-color: #4f46e5;
   font-weight: 600;
 }
 
@@ -2483,8 +2489,8 @@ a.text-link {
   border-radius: 999px;
   font-size: 0.66rem;
   font-weight: 700;
-  background: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.85);
+  background: rgba(79, 70, 229, 0.1);
+  color: #4f46e5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4471,8 +4477,8 @@ html.dark body {
    Hue: warm brown-amber  |  Sat: very low  |  Not glowing
    ════════════════════════════════════════════════════════════════ */
 
-/* Primary action buttons — exclude sidebar nav buttons */
-html.dark button:not(.ghost-button):not(.danger-button):not(.notif-delete-btn):not(.meeting-join-open):not(.dash-sidebar-nav button):not(.dash-icon-btn) {
+/* Primary action buttons — exclude nav, demo, auth, icon and step buttons */
+html.dark button:not(.ghost-button):not(.danger-button):not(.notif-delete-btn):not(.meeting-join-open):not(.dash-icon-btn):not(.demo-quick-btn):not(.auth-theme-toggle):not(.text-link):not(.step-button):not(.nav-link) {
   background: #7c4a03 !important;
   color: #f3d9b8 !important;
   box-shadow: none !important;
@@ -4878,16 +4884,21 @@ html.dark .composer-panel .step-button.active small {
 
 html.dark .nav-group-label { color: rgba(255,255,255,0.3) !important; }
 
-html.dark .dash-sidebar-nav > button {
+html.dark .dash-sidebar-nav > button,
+html.dark .dash-sidebar-nav > .nav-link {
+  background: transparent !important;
   color: rgba(255,255,255,0.5) !important;
   border-left-color: transparent !important;
+  box-shadow: none !important;
 }
-html.dark .dash-sidebar-nav > button:hover {
+html.dark .dash-sidebar-nav > button:hover,
+html.dark .dash-sidebar-nav > .nav-link:hover {
   background: rgba(255,255,255,0.05) !important;
   color: rgba(255,255,255,0.85) !important;
   border-left-color: rgba(255,255,255,0.1) !important;
 }
-html.dark .dash-sidebar-nav > button.active {
+html.dark .dash-sidebar-nav > button.active,
+html.dark .dash-sidebar-nav > .nav-link.active {
   background: rgba(255,255,255,0.08) !important;
   color: #ffffff !important;
   border-left-color: #7c5c3a !important;
@@ -4905,6 +4916,7 @@ html.dark .dash-sidebar-nav .nav-badge {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid #e8eef5;
+  background: transparent;
 }
 
 .demo-credentials-label {
@@ -4958,7 +4970,7 @@ html.dark .dash-sidebar-nav .nav-badge {
 }
 
 /* Dark mode demo buttons */
-html.dark .demo-credentials { border-top-color: #21262d !important; }
+html.dark .demo-credentials { border-top-color: #2a3140 !important; background: transparent !important; }
 html.dark .demo-credentials-label { color: #6e7681 !important; }
 html.dark .demo-quick-btn {
   background: #1c2333 !important;
@@ -4997,6 +5009,17 @@ html.dark .demo-quick-email { color: #6e7681 !important; }
   padding: 0 !important;
 }
 
+/* Corner positioned toggle — absolute top-right of auth panel */
+.clean-auth-panel {
+  position: relative;
+}
+
+.auth-theme-toggle--corner {
+  position: absolute !important;
+  top: 1rem;
+  right: 1rem;
+}
+
 .auth-theme-toggle:hover {
   background: #e2e8f0 !important;
   color: #334155 !important;
@@ -5010,4 +5033,167 @@ html.dark .auth-theme-toggle {
 html.dark .auth-theme-toggle:hover {
   background: #2d3748 !important;
   color: #cdd9e5 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AUTH PAGE — DARK MODE FIXES
+   ════════════════════════════════════════════════════════════════ */
+
+/* Visual overlay bottom-left text area */
+html.dark .visual-overlay-text {
+  background: rgba(0, 0, 0, 0.55) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .visual-overlay-text h1,
+html.dark .visual-overlay-text p,
+html.dark .visual-overlay-lead {
+  color: rgba(255,255,255,0.85) !important;
+}
+
+/* Auth panel background in dark mode */
+html.dark .auth-panel,
+html.dark .clean-auth-panel {
+  background: #0d1117 !important;
+  border-color: #21262d !important;
+  color: #cdd9e5 !important;
+}
+
+html.dark .auth-panel h2,
+html.dark .clean-auth-panel h2 {
+  color: #e6edf3 !important;
+}
+
+html.dark .auth-panel p,
+html.dark .auth-subtitle {
+  color: #8b949e !important;
+}
+
+/* Demo credentials in dark mode */
+html.dark .demo-credentials {
+  border-top-color: #21262d !important;
+}
+
+html.dark .demo-credentials-label {
+  color: #6e7681 !important;
+}
+
+/* Brand tagline in dark mode */
+html.dark .brand-mark-tagline {
+  color: #8b949e !important;
+}
+
+/* Brand label above h2 in auth forms */
+.auth-brand-label {
+  display: block;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+html.dark .auth-brand-label {
+  color: #6e7681 !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ADMIN CONSOLE — DARK MODE
+   ════════════════════════════════════════════════════════════════ */
+
+/* Anomaly & stat cards */
+html.dark .admin-console .admin-anomaly-card,
+html.dark .admin-console .admin-stat-block {
+  background: #161b22 !important;
+  border-color: #21262d !important;
+}
+
+html.dark .admin-console .admin-anomaly-title,
+html.dark .admin-console .admin-stat-label {
+  color: #6e7681 !important;
+}
+
+html.dark .admin-console .admin-anomaly-list li,
+html.dark .admin-console .admin-stat-chips li {
+  color: #cdd9e5 !important;
+}
+
+html.dark .admin-console .admin-anomaly-meta {
+  color: #8b949e !important;
+}
+
+html.dark .admin-console .admin-anomaly-empty,
+html.dark .admin-console .admin-anomaly-summary {
+  color: #6e7681 !important;
+}
+
+/* Risk pills dark mode */
+html.dark .admin-console .admin-risk-pill {
+  background: #21262d !important;
+  color: #8b949e !important;
+}
+
+html.dark .admin-console .admin-risk-pill--high {
+  background: rgba(185, 28, 28, 0.2) !important;
+  color: #f87171 !important;
+}
+
+html.dark .admin-console .admin-risk-pill--medium {
+  background: rgba(194, 65, 12, 0.2) !important;
+  color: #fb923c !important;
+}
+
+html.dark .admin-console .admin-risk-pill--low {
+  background: rgba(4, 120, 87, 0.2) !important;
+  color: #34d399 !important;
+}
+
+/* Stat chips */
+html.dark .admin-console .admin-stat-chip {
+  background: rgba(37, 99, 235, 0.15) !important;
+  color: #93c5fd !important;
+}
+
+/* Table */
+html.dark .admin-console .admin-table-wrap {
+  background: #0d1117 !important;
+  border-color: #21262d !important;
+  box-shadow: none !important;
+}
+
+html.dark .admin-console .admin-table-wrap table {
+  background: transparent !important;
+}
+
+html.dark .admin-console .admin-table-wrap th {
+  background: linear-gradient(180deg, #1a2236 0%, #111827 100%) !important;
+  color: #8b949e !important;
+  border-bottom-color: #21262d !important;
+}
+
+html.dark .admin-console .admin-table-wrap td {
+  color: #cdd9e5 !important;
+  border-bottom-color: #21262d !important;
+}
+
+/* Table row hover — dark subtle, NOT white */
+html.dark .admin-console .admin-table-wrap tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Panel section headers */
+html.dark .admin-console .admin-panel-head h2 {
+  color: #e6edf3 !important;
+}
+
+html.dark .admin-console .admin-panel-head p {
+  color: #6e7681 !important;
+}
+
+/* Chart box borders */
+html.dark .admin-console .chart-box,
+html.dark .admin-console .admin-chart-panel .chart-box {
+  border-color: #21262d !important;
+  background: #161b22 !important;
 }
